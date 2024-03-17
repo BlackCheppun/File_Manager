@@ -3,6 +3,9 @@
 
 #include "data/TypeFichier.h"
 
+/// @brief formatage de la partition 
+/// @param nomPartition 
+/// @return 0/-1
 int myFormat(char* nomPartition);
 int myClose(int file);
 
