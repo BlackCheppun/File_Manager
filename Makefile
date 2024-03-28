@@ -12,6 +12,10 @@ OUTPUT = fileManager
 $(OUTPUT): $(SRCS) $(HEADER)
 	$(CC) $(CFLAGS) $(SRCS) -o $(OUTPUT)
 
+docs:
+	doxygen
+
+
 clean:
 	rm -f $(OUTPUT)
 

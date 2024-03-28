@@ -9,7 +9,7 @@ typedef struct sb{
     unsigned short nbFileDispo;
     unsigned short totalDirectory;
     unsigned short nbDirectoryDispo;
-    char fs_name[3];
+    char fs_name[4];
 } SuperBlock;
 
 #endif

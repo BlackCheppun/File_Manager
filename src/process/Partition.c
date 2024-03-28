@@ -31,21 +31,53 @@ int myFormat(char* nomPartition){
         return -1;
     }
 
+    int nbWrite;
+    // Superblock information writing
     lseek(fd,0,SEEK_SET);
     unsigned short partitionInfo[7] = {NUMBER_OF_BLOCK,BLOCK_SIZE,NUMBER_OF_BLOCK,NUMBER_OF_BLOCK,NUMBER_OF_BLOCK,MAX_DIR_AMOUNT,MAX_DIR_AMOUNT};
-    write(fd,partitionInfo,sizeof(partitionInfo));
+    nbWrite = write(fd,partitionInfo,sizeof(partitionInfo));
     char* fs_proprietary = "ALS"; 
-    write(fd,fs_proprietary,sizeof(fs_proprietary));
+    nbWrite = write(fd,fs_proprietary,sizeof(fs_proprietary));
 
     
+    // BlockBitmap writing
+    unsigned short zeroVal = 0;
+    for (int i = 0; i < BLOCK_BITMAP_SIZE; i++)
+    {
+        nbWrite = write(fd,&zeroVal,1);
+        if (nbWrite <= 0)
+        {
+            perror("erreur lors de l'init du block bitmap");
+            close(fd);
+            return -1;
+        }
+    }
     
-    lseek(fd,0,SEEK_SET);
-    unsigned short readBuffer[3];
-    read(fd, readBuffer, sizeof(readBuffer));
-    printf("%d,%d,%d\n",readBuffer[0],readBuffer[1],readBuffer[2]);
-    char buf[10];
-    read(fd,buf,3);
-    printf("File System : %s\n",buf);
+    
+    // File Block writing
+    for (int i = 0; i < FILE_BLOCK_SIZE; i++)
+    {
+        nbWrite = write(fd,&nullChar, 1);
+        if (nbWrite <= 0)
+        {
+            perror("erreur lors de l'init du File block");
+            close(fd);
+            return -1;
+        }
+    }
+    
+
+    // Dir block writing
+    for (int i = 0; i < DIR_BLOCK_SIZE; i++)
+    {
+        nbWrite = write(fd,&nullChar,1);
+        if (nbWrite <= 0)
+        {
+            perror("erreur lors de l'init du Dir block");
+            close(fd);
+            return -1;
+        }
+    }
 
     close(fd);
     return 0;

@@ -7,6 +7,7 @@ typedef struct TypeFichier
     char nom[MAX_FILES_NAME_SIZE];
     unsigned int size;
     unsigned short posInBlockBMP;
+    unsigned int posSeek;
 } File;
 
 #endif
