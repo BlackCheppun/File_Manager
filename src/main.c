@@ -25,7 +25,8 @@ int main(int argc, char** argv){
     printf("taille partie reserve partition : %d\n",DATABLOCK_OFFSET);
     printf("taille partie libre partition : %d\n",PARTITION_SIZE-DATABLOCK_OFFSET);
     printf("%%used par reserve partition : %.3f%%\n", (float)DATABLOCK_OFFSET/(float)PARTITION_SIZE);
-    myOpen("coucou");  
-
+    myOpen("coucou"); 
+    
     return 0;
+   
 }
