@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 
 int loadSuperBlock(SuperBlock* sb){
     if (sb == NULL){
@@ -86,20 +87,7 @@ int loadBlockBitmap(BlockBitmap* bbmp){
     close(fd);
     return 0;
 }
-int loadFileBlock(File* fileArray[]){
-    if (fileArray == NULL){
-        fileArray = (File**) malloc(NUMBER_OF_BLOCK*sizeof(File*));
-        if (fileArray == NULL){
-            return -1;
-        }
-        for (int i = 0; i < NUMBER_OF_BLOCK; i++)
-        {
-            fileArray[i] = (File*) malloc(sizeof(File));
-            if (fileArray[i] == NULL){
-                return -1;
-            }
-        }
-    }
+int loadFileBlock(File *fileArray){
 
     int fd = open(PARTITION_NAME, O_RDONLY);
     
@@ -109,32 +97,44 @@ int loadFileBlock(File* fileArray[]){
         return -1;
     }
 
-    File farray[NUMBER_OF_BLOCK];
-    if (read(fd,farray,sizeof(farray)) == -1)
-    {
+    if (lseek(fd,FILEBLOCK_OFFSET,SEEK_SET) == -1){
         close(fd);
-        perror("erreur chargement FileBlock");
+        perror("error seek load Fileblock");
         return -1;
     }
-    for (int i = 0; i < NUMBER_OF_BLOCK; i++)
-    {
-        
 
-        for (int j = 0; j < MAX_FILES_NAME_SIZE; j++)
-        {
-            printf("%c",farray[i].nom[j]);
-            fileArray[i]->nom[j] = farray[i].nom[j];
-        }
-        fileArray[i]->posInBlockBMP = farray[i].posInBlockBMP;
-        fileArray[i]->posSeek = farray[i].posSeek;
-        fileArray[i]->size = farray[i].size;
+    for (int i = 0; i < NUMBER_OF_BLOCK; i++){
+        File tmpF;
+        read(fd,&tmpF,sizeof(File));
+        fileArray[i] = tmpF;
     }
-    
+
     close(fd);
     return 0;
 }
 int loadDirBlock(Directory* dirArray){
+    int fd = open(PARTITION_NAME, O_RDONLY);
     
+    if (fd == -1)
+    {
+        perror("erreur lecture SuperBlock");
+        return -1;
+    }
+
+    if (lseek(fd,DIRBLOCK_OFFSET,SEEK_SET) == -1){
+        close(fd);
+        perror("error seek load Fileblock");
+        return -1;
+    }
+
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++){
+        Directory tmpD;
+        read(fd,&tmpD,sizeof(Directory));
+        dirArray[i] = tmpD;
+    }
+
+    close(fd);
+    return 0;
 }
 
 void printSB(SuperBlock sb){
@@ -169,5 +169,19 @@ void printFILE(File array[]){
     
 }
 void printDIR(Directory array[]){
-    
+    printf("FileBlock infos :\n");
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    {
+        printf("\tF%d:\t",i);
+        printf("'%s',Entries %u, Parent Index %u\n",array[i].nomDossier,array[i].nbEntry,array[i].parentIndex);
+        printDirEnt(array[i].dirEnt,array[i].nbEntry);
+    }
+}
+
+void printDirEnt(DirectoryEntry array[], int nbDirEnt){
+    for (int i = 0; i < nbDirEnt; i++)
+    {
+        printf("\tisDir:%u, index:%u",(int)array[i].isDirectory,array[i].index);
+    }
+    printf("\n");
 }

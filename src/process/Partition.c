@@ -44,7 +44,7 @@ int myFormat(char* nomPartition){
     unsigned short zeroVal = 0;
     for (int i = 0; i < BLOCK_BITMAP_SIZE; i++)
     {
-        nbWrite = write(fd,&zeroVal,1);
+        nbWrite = write(fd,&zeroVal,sizeof(unsigned short));
         if (nbWrite <= 0)
         {
             perror("erreur lors de l'init du block bitmap");
@@ -57,7 +57,7 @@ int myFormat(char* nomPartition){
     // File Block writing
     for (int i = 0; i < FILE_BLOCK_SIZE; i++)
     {
-        nbWrite = write(fd,&nullChar, 1);
+        nbWrite = write(fd,&nullChar, sizeof(unsigned short));
         if (nbWrite <= 0)
         {
             perror("erreur lors de l'init du File block");

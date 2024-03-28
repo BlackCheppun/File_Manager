@@ -13,15 +13,25 @@
 File* myOpen(char* fileName){
     SuperBlock sb;
     BlockBitmap bbmp;
-    File* array = NULL;
-
+    File array[NUMBER_OF_BLOCK];
+    Directory arrayDir[MAX_DIR_AMOUNT];
+    printf("je charge le superblock\n");
     loadSuperBlock(&sb);
+    printf("reussi\n");
+    printf("je charge le bitmap\n");
     loadBlockBitmap(&bbmp);
-    loadFileBlock(&array);
+    printf("reussi\n");
+    printf("je charge le fileblock\n");
+    loadFileBlock(array);
+    printf("reussi\n");
+    printf("je charge le dirblock\n");
+    loadDirBlock(arrayDir);
+    printf("reussi\n");
     
     printSB(sb);
     printBBMP(bbmp);
     printFILE(array);
+    printDIR(arrayDir);
 
     return NULL;
 }
