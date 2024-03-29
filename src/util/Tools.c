@@ -36,12 +36,11 @@ int savetoBitmapBlock(File f,int index){
         perror("save failed FileBlock");
         return -1;
     }
-    if (lseek(fd,FILEBLOCK_OFFSET + index*sizeof(unsigned short),SEEK_SET) == -1){
+    if (lseek(fd,FILEBLOCK_OFFSET + index*sizeof(File),SEEK_SET) == -1){
         close(fd);
         perror("save seek failed FileBlock");
         return -1;
     }
-    printf("pos dec %d",FILEBLOCK_OFFSET + index*sizeof(unsigned short));
     if (write(fd,&f,sizeof(f)) == -1){
         close(fd);
         perror("save write failed FileBlock");
