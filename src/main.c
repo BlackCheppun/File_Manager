@@ -17,7 +17,7 @@ char* PARTITION_NAME;
 int main(int argc, char** argv){
     char* nom = "mapartition.bin";
     PARTITION_NAME = nom;
-    //myFormat(nom);
+    myFormat(nom);
     printf("nb octet pour offset : %d\n",BLOCK_BITMAP_SIZE);
     printf("taille de superblock : %d\n",sizeof(SuperBlock));
     printf("taille de directory : %d\n",sizeof(Directory));
@@ -26,6 +26,14 @@ int main(int argc, char** argv){
     printf("taille partie libre partition : %d\n",PARTITION_SIZE-DATABLOCK_OFFSET);
     printf("%%used par reserve partition : %.3f%%\n", (float)DATABLOCK_OFFSET/(float)PARTITION_SIZE);
     myOpen("coucou");  
-
+    File* file = myOpen("papi");  
+    if (file == NULL){
+        printf("Je suis NULL\n");
+    }else{
+        printf("je mappele : %s \n",file->nom);
+        printf("taille file: %u \n",file->size);
+        printf("posBMP : %u \n",file->posInBlockBMP);
+        printf("seek : %u \n",file->posSeek);
+    }
     return 0;
 }

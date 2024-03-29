@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "process/Fichier.h"
@@ -10,32 +12,98 @@
 #include "util/Tools.h"
 #include "data/TypeSuperBloc.h"
 
+/**
+ * @brief Ouvre (ou créer) le fichier fileName dans notre partition
+ * 
+ * @param fileName Nom du fichier
+ * @return File* du fichier fileName | NULL si échec
+ */
 File* myOpen(char* fileName){
     SuperBlock sb;
-    BlockBitmap bbmp;
-    File array[NUMBER_OF_BLOCK];
-    Directory arrayDir[MAX_DIR_AMOUNT];
-    printf("je charge le superblock\n");
     loadSuperBlock(&sb);
-    printf("reussi\n");
-    printf("je charge le bitmap\n");
-    loadBlockBitmap(&bbmp);
-    printf("reussi\n");
-    printf("je charge le fileblock\n");
+    File array[NUMBER_OF_BLOCK];
     loadFileBlock(array);
-    printf("reussi\n");
-    printf("je charge le dirblock\n");
+    int i = 0;
+    int nbActuelFile = sb.totalFile - sb.nbFileDispo;
+
+    /* Dans le cas ou le fichier existe*/
+    while (i<nbActuelFile && strcmp(array[i].nom,fileName) != 0 )
+    {
+        i++;
+    }
+    if (i<nbActuelFile)
+    {
+        File* found = &(array[i]);
+        return found;
+    }
+
+    /* Il n'existe pas il faut le créer*/
+    BlockBitmap bbmp;
+    Directory arrayDir[MAX_DIR_AMOUNT];
+    loadBlockBitmap(&bbmp);
     loadDirBlock(arrayDir);
-    printf("reussi\n");
-    
-    printSB(sb);
-    printBBMP(bbmp);
-    printFILE(array);
-    printDIR(arrayDir);
+    // verifie si on a encore de la place libre
+    int index = indexOfFreeBBMP(bbmp);
+    if (index == -1)
+    {
+        perror("Cannot find free space");
+        return NULL;
+    }
+    // on attribue la case au fichier avec FF
+    bbmp.bmpTab[index] = USHRT_MAX; 
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("can't open partition myOpen");
+        return NULL;
+    }
+    if (lseek(fd,BITMAPBLOCK_OFFSET + index * sizeof(unsigned short),SEEK_SET) == -1)
+    {
+        close(fd);
+        perror("can't seek to indexBBMP myOpen");
+        return NULL;
+    }
+    unsigned short max = USHRT_MAX;
+    if (write(fd,&max,sizeof(max)) == -1){
+        close(fd);
+        perror("can't change value BBMP myOpen");
+        return NULL;
+    }
+    close(fd);
 
-    return NULL;
+
+    int indFile = NUMBER_OF_BLOCK - sb.nbFileDispo;
+    sb.nbFileDispo--;
+    File* tmp = (File*) malloc(sizeof(File));
+    strcpy(tmp->nom,fileName);
+    for (int i = strlen(tmp->nom); i < MAX_FILES_NAME_SIZE; i++)
+    {
+        tmp->nom[i] = '\0';
+    }
+    tmp->posInBlockBMP = index;
+    tmp->size = 0;
+    tmp->posSeek = 0;
+
+    // persistance des données
+    savetoBitmapBlock(*tmp,indFile);
+    saveSuperBlock(sb);
+
+    /*
+    Step 1 check if fileName exist in the fileBlock
+        If yes return the file pointer
+        else find the first index in the BBMP where it is empty
+        assign max unsigned value (limit.h)
+
+    Step 2 only if in case we file don't exist
+        Trouver l'indice du tableau libre,
+        Affecter USHORT_MAX a celui ci => BBMP OFFSET + index*sizeof(),
+        write a cette endroit la le BBMP
+        trouver l'indice du tableau FILES : NBfile - sb.nbFileDispo
+        attribuer dans la liste des files size = 0,
+    */ 
+
+    return tmp;
 }
-
 
 int myClose(int file){
     return close(file);

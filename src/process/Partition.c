@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "util/constant.h"
 #include "data/TypeFichier.h"
 #include "data/TypeDossier.h"

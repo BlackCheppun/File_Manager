@@ -1,12 +1,74 @@
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include "util/Tools.h"
 #include "data/TypeSuperBloc.h"
 #include "data/TypeFichier.h"
 #include "data/TypeDossier.h"
 #include "data/TypeBitmap.h"
-#include <stdlib.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
+
+
+/**
+ * @brief Retourne l'indice du premier bloc vide
+ * 
+ * @param bbmp 
+ * @return int i s'il existe | -1 si non trouvé
+ */
+int indexOfFreeBBMP(BlockBitmap bbmp){
+    int i= 0;
+    while (i< BLOCK_BITMAP_ARRAY_SIZE && bbmp.bmpTab[i] != 0)
+    {
+        i++;
+    }
+    if (i >= BLOCK_BITMAP_ARRAY_SIZE)
+    {
+        return -1;
+    }
+    return i;
+}
+
+int savetoBitmapBlock(File f,int index){
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("save failed FileBlock");
+        return -1;
+    }
+    if (lseek(fd,FILEBLOCK_OFFSET + index*sizeof(unsigned short),SEEK_SET) == -1){
+        close(fd);
+        perror("save seek failed FileBlock");
+        return -1;
+    }
+    printf("pos dec %d",FILEBLOCK_OFFSET + index*sizeof(unsigned short));
+    if (write(fd,&f,sizeof(f)) == -1){
+        close(fd);
+        perror("save write failed FileBlock");
+        return -1;
+    }
+    
+    close(fd);
+    return 0;
+}
+
+int saveSuperBlock(SuperBlock sb){
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("save failed SuperBlock");
+        return -1;
+    }
+
+    if (write(fd,&sb,sizeof(sb)) == -1){
+        close(fd);
+        perror("save write failed SuperBlock");
+        return -1;
+    }
+    
+    close(fd);
+    return 0;
+}
 
 int loadSuperBlock(SuperBlock* sb){
     if (sb == NULL){
@@ -172,7 +234,7 @@ void printDIR(Directory array[]){
     printf("FileBlock infos :\n");
     for (int i = 0; i < MAX_DIR_AMOUNT; i++)
     {
-        printf("\tF%d:\t",i);
+        printf("\tD%d:\t",i);
         printf("'%s',Entries %u, Parent Index %u\n",array[i].nomDossier,array[i].nbEntry,array[i].parentIndex);
         printDirEnt(array[i].dirEnt,array[i].nbEntry);
     }
