@@ -58,7 +58,7 @@ int myFormat(char* nomPartition){
     // File Block writing
     for (int i = 0; i < FILE_BLOCK_SIZE; i++)
     {
-        nbWrite = write(fd,&nullChar, sizeof(unsigned short));
+        nbWrite = write(fd,&nullChar, 1);
         if (nbWrite <= 0)
         {
             perror("erreur lors de l'init du File block");
@@ -80,6 +80,19 @@ int myFormat(char* nomPartition){
         }
     }
 
+    // Data Block writing
+    char tab[BLOCK_SIZE] = {0};
+    for (int i = 0; i < NUMBER_OF_BLOCK; i++)
+    {
+        nbWrite = write(fd,tab,sizeof(tab));
+        if (nbWrite <= 0)
+        {
+            perror("erreur lors de l'init du Dir block");
+            close(fd);
+            return -1;
+        }
+    }
+    
     close(fd);
     return 0;
 }

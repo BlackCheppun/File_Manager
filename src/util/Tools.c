@@ -54,7 +54,8 @@ int indexBBMPOfPosSeekLoaded(File* file,BlockBitmap bbmp){
 
 int saveFileBlock(File f,int index){
     int fd = open(PARTITION_NAME,O_RDWR);
-    
+    unsigned int tmp = f.posSeek;
+    f.posSeek = 0;
     if (fd == -1)
     {
         perror("save failed FileBlock");
@@ -70,7 +71,7 @@ int saveFileBlock(File f,int index){
         perror("save write failed FileBlock");
         return -1;
     }
-    
+    f.posSeek = tmp;
     close(fd);
     return 0;
 }

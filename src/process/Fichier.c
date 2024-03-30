@@ -27,7 +27,11 @@ File* myOpen(char* fileName){
     }
     if (i<nbActuelFile)
     {
-        File* found = &(array[i]);
+        File* found = (File*) malloc(sizeof(File));
+        strcpy(found->nom, array[i].nom);
+        found->posInBlockBMP = array[i].posInBlockBMP;
+        found->posSeek = array[i].posSeek;
+        found->size = array[i].size;
         return found;
     }
 
@@ -90,8 +94,7 @@ int myWrite(File* f, void* buffer,int nBytes){
     loadSuperBlock(&sb);
     BlockBitmap bbmp;
     loadBlockBitmap(&bbmp);
-
-    int X = f->posSeek + nBytes;
+    unsigned int X = f->posSeek + (unsigned int) nBytes;
     /*
         Block = 512
         Size = 330
@@ -103,12 +106,11 @@ int myWrite(File* f, void* buffer,int nBytes){
         X > Size ? 
             (X - Size)(770)/Block(512) = 1.4 => 2 bloc en plus
     */
-    int nbBlocNeed = 0;
+    unsigned int nbBlocNeed = 0;
     if (X > f->size)
     {
-        nbBlocNeed = ((X-f->size) / BLOCK_SIZE) + (((X-f->size) % BLOCK_SIZE) != 0);
+        nbBlocNeed = ((int)(X-f->size) / BLOCK_SIZE) + (((int)(X-f->size) % BLOCK_SIZE) != 0);
     }
-       
     // calcul de bloc dispo
     if (sb.nbBlockDispo < nbBlocNeed)
     {
@@ -172,9 +174,9 @@ int myWrite(File* f, void* buffer,int nBytes){
     }
     if (X > f->size)
     {
-        f->size = X;
+        f->size = (unsigned int) X;
     }
-    f->posSeek += nBytes;
+    f->posSeek = f->posSeek + (unsigned int)nBytes;
     close(fd);
     // Superblock saved
     saveSuperBlock(sb);
@@ -192,7 +194,6 @@ int myWrite(File* f, void* buffer,int nBytes){
     saveFileBlock(*f,i);
     return nBytes;
 }
-
 
 
 
@@ -221,8 +222,8 @@ int myRead(File* f, void* buffer, int nBytes) {
 }
 
 void mySeek(File* f, int offset, int base) {
-    int currentPos = f->posSeek;
-    int sizeFile = f->size;
+    int currentPos = (int)f->posSeek;
+    int sizeFile = (int)f->size;
     switch (base) {
         case MYSEEK_START:
             if (offset < 0){
@@ -255,7 +256,7 @@ void mySeek(File* f, int offset, int base) {
                 break;
             }
             
-            f->posSeek += offset;
+            f->posSeek += (unsigned int) offset;
             break;
         case MYSEEK_END:
             if (offset < 0)
@@ -274,4 +275,46 @@ void mySeek(File* f, int offset, int base) {
             perror("Unknown base mySeek");
             return;
     }
+}
+
+
+unsigned int mySize(File* f){
+    return f->size;
+}
+unsigned int myTell(File* f){
+    return f->posSeek;
+}
+int myRename(char* oldName, char* newName){
+    if (strlen(newName) > MAX_FILES_NAME_SIZE)
+    {
+        perror("New name exceeded size limit myRename");
+        return -1;
+    }
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    File array[NUMBER_OF_BLOCK];
+    loadFileBlock(array);
+    int i = 0;
+    int nbActuel = sb.totalFile - sb.nbFileDispo;
+    while (i < nbActuel && strcmp(oldName,array[i].nom) != 0)
+    {
+        i++;
+    }
+    if (i < nbActuel)
+    {
+        File tmp = array[i];
+        for (int j = 0; j < strlen(newName); j++)
+        {
+            tmp.nom[j] = newName[j];
+        }
+        for (int j = strlen(newName); j < MAX_FILES_NAME_SIZE-1; j++)
+        {
+            tmp.nom[j] = '\0';
+        }
+        printf("new name %s\n",tmp.nom);
+        saveFileBlock(tmp,i);
+        return 0;
+    }
+    perror("File not found myRename");
+    return -1;
 }

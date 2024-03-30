@@ -50,4 +50,9 @@ int myWrite(File* f, void* buffer,int nBytes);
  */
 void mySeek(File* f,int offset,int base);
 
+unsigned int mySize(File* f);
+unsigned int myTell(File* f);
+int myRename(char* oldName, char* newName);
+
+
 #endif

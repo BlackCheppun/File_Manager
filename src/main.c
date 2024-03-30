@@ -19,20 +19,25 @@ int main(int argc, char** argv){
     PARTITION_NAME = nom;
     myFormat(nom);
     
-    printf("nb octet pour offset : %ld\n",BLOCK_BITMAP_SIZE);
-    printf("taille de superblock : %ld\n",sizeof(SuperBlock));
-    printf("taille de directory : %ld\n",sizeof(Directory));
-    printf("taille totale partition : %ld\n",PARTITION_SIZE);
-    printf("taille partie reserve partition : %ld\n",DATABLOCK_OFFSET);
-    printf("taille partie libre partition : %ld\n",PARTITION_SIZE-DATABLOCK_OFFSET);
-    printf("%%used par reserve partition : %.3f%%\n", (float)DATABLOCK_OFFSET/(float)PARTITION_SIZE);
+    // printf("nb octet pour offset : %ld\n",BLOCK_BITMAP_SIZE);
+    // printf("taille de superblock : %ld\n",sizeof(SuperBlock));
+    // printf("taille de directory : %ld\n",sizeof(Directory));
+    // printf("taille totale partition : %ld\n",PARTITION_SIZE);
+    // printf("taille partie reserve partition : %ld\n",DATABLOCK_OFFSET);
+    // printf("taille partie libre partition : %ld\n",PARTITION_SIZE-DATABLOCK_OFFSET);
+    // printf("%%used par reserve partition : %.3f%%\n", (float)DATABLOCK_OFFSET/(float)PARTITION_SIZE);
 
     File* f = myOpen("coucou");
-    char* msg = "je suis un bout de texte!";
-    myWrite(f,msg,strlen(msg));
-    mySeek(f,6,MYSEEK_CUR);  
-    char* msg1 = "mais que fais je de ca!";
-    myWrite(f,msg1,strlen(msg1));
+    
+    if (f != NULL)
+    {
+        char* msg = "je suis un bout de texte!";
+        myWrite(f,msg,strlen(msg));
+        mySeek(f,-10,MYSEEK_CUR);  
+        char* msg1 = "abcdefghijklmnopqrstuvwxyz";
+        myWrite(f,msg1,strlen(msg1));
+    }
+    
     
     File* file = myOpen("papi");  
     if (file == NULL){
@@ -45,6 +50,8 @@ int main(int argc, char** argv){
         printf("taille file: %u \n",file->size);
         printf("posBMP : %u \n",file->posInBlockBMP);
         printf("seek : %u \n",file->posSeek);
+        myRename("papi","mamie");
     }
+    
     return 0;
 }
