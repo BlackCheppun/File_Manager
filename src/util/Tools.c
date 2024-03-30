@@ -29,8 +29,32 @@ int indexOfFreeBBMP(BlockBitmap bbmp){
     return i;
 }
 
-int savetoBitmapBlock(File f,int index){
+int indexBBMPOfPosSeek(File* file){
+    BlockBitmap bbmp;
+    loadBlockBitmap(&bbmp);
+    return indexBBMPOfPosSeekLoaded(file,bbmp);
+}
+
+int indexBBMPOfPosSeekLoaded(File* file,BlockBitmap bbmp){
+    if (file->posSeek > file->size)
+    {
+        perror("cursor cannot exceed file size");
+        exit(-1);
+    }
+    int seekVal = file->posSeek;
+    int i = file->posInBlockBMP;
+    while (seekVal > BLOCK_SIZE)
+    {
+        seekVal = seekVal - BLOCK_SIZE;
+        i = bbmp.bmpTab[i];
+    }
+    return i;
+}
+
+
+int saveFileBlock(File f,int index){
     int fd = open(PARTITION_NAME,O_RDWR);
+    
     if (fd == -1)
     {
         perror("save failed FileBlock");
@@ -62,6 +86,28 @@ int saveSuperBlock(SuperBlock sb){
     if (write(fd,&sb,sizeof(sb)) == -1){
         close(fd);
         perror("save write failed SuperBlock");
+        return -1;
+    }
+    
+    close(fd);
+    return 0;
+}
+
+int saveBBMP(BlockBitmap bbmp){
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("save failed FileBlock");
+        return -1;
+    }
+    if (lseek(fd,BITMAPBLOCK_OFFSET,SEEK_SET) == -1){
+        close(fd);
+        perror("save seek failed FileBlock");
+        return -1;
+    }
+    if (write(fd,&bbmp,sizeof(bbmp)) == -1){
+        close(fd);
+        perror("save write failed FileBlock");
         return -1;
     }
     

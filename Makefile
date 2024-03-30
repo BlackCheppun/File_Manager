@@ -9,15 +9,16 @@ HEADER = $(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/**/*.h)
 
 OUTPUT = fileManager
 
+all: $(OUTPUT)
+
 $(OUTPUT): $(SRCS) $(HEADER)
 	$(CC) $(CFLAGS) $(SRCS) -o $(OUTPUT)
 
 docs:
-	doxygen
+	doxygen Doxyfile
 
 
 clean:
 	rm -f $(OUTPUT)
 
-all: $(OUTPUT)
 .PHONY: clean

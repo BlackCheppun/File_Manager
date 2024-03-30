@@ -1,3 +1,9 @@
+/**
+ * @file constant.h
+ * @brief Définition des constantes utilisé
+ * On pourra redéfinir ces constant en override avant d'appeler le fichier
+ */
+
 extern char* PARTITION_NAME;
 
 #ifndef BLOCK_SIZE

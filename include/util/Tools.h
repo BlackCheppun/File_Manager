@@ -11,8 +11,11 @@ int loadFileBlock(File *fileArray);
 int loadDirBlock(Directory* dirArray);
 
 int indexOfFreeBBMP(BlockBitmap bbmp);
+int indexBBMPOfPosSeek(File* file);
+int indexBBMPOfPosSeekLoaded(File* file,BlockBitmap bbmp);
 int saveSuperBlock(SuperBlock sb);
-int savetoBitmapBlock(File file,int index);
+int saveFileBlock(File file,int index);
+int saveBBMP(BlockBitmap bbmp);
 
 void printSB(SuperBlock sb);
 void printBBMP(BlockBitmap bbmp);

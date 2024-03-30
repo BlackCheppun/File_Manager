@@ -1,3 +1,10 @@
+/**
+ * @file Fichier.c
+ * @author Farah ALIANE
+ * @author Laurent LIN
+ * @brief Permet la manipulation de File
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -85,29 +92,121 @@ File* myOpen(char* fileName){
     tmp->posSeek = 0;
 
     // persistance des données
-    savetoBitmapBlock(*tmp,indFile);
+    saveFileBlock(*tmp,indFile);
     saveSuperBlock(sb);
-
-    /*
-    Step 1 check if fileName exist in the fileBlock
-        If yes return the file pointer
-        else find the first index in the BBMP where it is empty
-        assign max unsigned value (limit.h)
-
-    Step 2 only if in case we file don't exist
-        Trouver l'indice du tableau libre,
-        Affecter USHORT_MAX a celui ci => BBMP OFFSET + index*sizeof(),
-        write a cette endroit la le BBMP
-        trouver l'indice du tableau FILES : NBfile - sb.nbFileDispo
-        attribuer dans la liste des files size = 0,
-    */ 
 
     return tmp;
 }
 
-int myClose(int file){
-    return close(file);
+int myWrite(File* f, void* buffer,int nBytes){
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    BlockBitmap bbmp;
+    loadBlockBitmap(&bbmp);
+
+    int X = f->posSeek + nBytes;
+    /*
+        Block = 512
+        Size = 330
+        Seek = 300
+        Msg = 810
+        Cb de bloc ?
+        X = Seek + Msg : 1110
+        X < Size ? Pas bsoin de bloc
+        X > Size ? 
+            (X - Size)(770)/Block(512) = 1.4 => 2 bloc en plus
+    */
+    int nbBlocNeed = 0;
+    if (X > f->size)
+    {
+        nbBlocNeed = ((X-f->size) / BLOCK_SIZE) + (((X-f->size) % BLOCK_SIZE) != 0);
+    }
+       
+    // calcul de bloc dispo
+    if (sb.nbBlockDispo < nbBlocNeed)
+    {
+        perror("Not enough block myWrite");
+        return -1;
+    }
+    sb.nbBlockDispo -= nbBlocNeed;
+
+    // deplacement initial vers la tete du curseur
+    int currentIndex = indexBBMPOfPosSeekLoaded(f,bbmp);
+    // bbmp.bmpTab[currentIndex] = USHRT_MAX;
+    int toWrite = nBytes;
+
+    // début de l'écriture 
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("couldn't open partition myWrite");
+        return -1;
+    }
+    int offset=0, written, nbWrite, iFreeBlock;
+
+    if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET + f->posSeek%BLOCK_SIZE,SEEK_SET) == -1)
+    {
+        close(fd);
+        perror("error initial seek myWrite");
+        return -1;
+    }
+    
+    // save de la data dans le DataBlock
+    while (toWrite > 0)
+    {
+        if (toWrite < BLOCK_SIZE){
+            written = toWrite;
+        }else{
+            written = BLOCK_SIZE;
+        }
+        if ((nbWrite = write(fd,(char*)(buffer) + offset,written)) == -1)
+        {
+            close(fd);
+            perror("error write myWrite");
+            return -1;
+        }
+        toWrite -= nbWrite;
+        offset += nbWrite;
+        if (toWrite > 0)
+        {
+            iFreeBlock = indexOfFreeBBMP(bbmp);
+            bbmp.bmpTab[currentIndex] = iFreeBlock;
+            currentIndex = iFreeBlock;
+        }
+        if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET,SEEK_SET) == -1)
+        {
+            close(fd);
+            perror("error seek myWrite");
+            return -1;
+        }
+    }
+    if (bbmp.bmpTab[currentIndex] == 0){
+        bbmp.bmpTab[currentIndex] = USHRT_MAX;
+    }
+    if (X > f->size)
+    {
+        f->size = X;
+    }
+    f->posSeek += nBytes;
+    close(fd);
+    // Superblock saved
+    saveSuperBlock(sb);
+    // BitmapBlock saved
+    saveBBMP(bbmp);
+    // FileBlock saved
+    File fileArray[NUMBER_OF_BLOCK];
+    loadFileBlock(fileArray);
+    int i = 0;
+    int nbActuelFile = sb.totalFile - sb.nbFileDispo;
+    while (i < nbActuelFile && strcmp(fileArray[i].nom,f->nom)!=0)
+    {
+        i++;
+    }
+    saveFileBlock(*f,i);
+    return nBytes;
 }
+
+
 
 /**
  * Lit un certain nombre d'octets à partir de la position actuelle du pointeur de lecture dans un fichier spécifié.
