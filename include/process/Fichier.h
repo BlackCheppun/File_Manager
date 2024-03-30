@@ -39,6 +39,14 @@ File* myOpen(char* fileName);
  */
 int myRead(File* f, void* buffer,int nBytes);
 
+/**
+ * @brief 
+ * 
+ * @param f 
+ * @param buffer 
+ * @param nBytes 
+ * @return int 
+ */
 int myWrite(File* f, void* buffer,int nBytes);
 
 /**
@@ -50,8 +58,30 @@ int myWrite(File* f, void* buffer,int nBytes);
  */
 void mySeek(File* f,int offset,int base);
 
+/**
+ * @brief Retourne la taille du fichier qu'il fait actuellement
+ * 
+ * @param f File
+ * @return unsigned int taille en Octet
+ */
 unsigned int mySize(File* f);
+
+/**
+ * @brief Retourne la position de la tête du curseur du fichier
+ * 
+ * @param f File
+ * @return unsigned int position du curseur (entre 0 à size) 
+ */
 unsigned int myTell(File* f);
+
+/**
+ * @brief Renomme le fichier oldName par son newName <br/>
+ * Attention, case sensitive ("abc" != "aBc")
+ * 
+ * @param oldName nom du fichier
+ * @param newName son nouveau nom
+ * @return int 0 en cas de réussite | 1 échec
+ */
 int myRename(char* oldName, char* newName);
 
 

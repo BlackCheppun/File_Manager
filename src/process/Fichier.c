@@ -13,6 +13,12 @@
 #include "data/TypeSuperBloc.h"
 
 File* myOpen(char* fileName){
+    if (strlen(fileName) > MAX_FILES_NAME_SIZE)
+    {
+        perror("fileName cannot exceed size limit myOpen");
+        return NULL;
+    }
+    
     SuperBlock sb;
     loadSuperBlock(&sb);
     File array[NUMBER_OF_BLOCK];
@@ -72,15 +78,19 @@ File* myOpen(char* fileName){
 
     int indFile = NUMBER_OF_BLOCK - sb.nbFileDispo;
     sb.nbFileDispo--;
+    // Uninitialised value by valgrind ???
     File* tmp = (File*) malloc(sizeof(File));
+    if (tmp == NULL){
+        return NULL;
+    }
     strcpy(tmp->nom,fileName);
     for (int i = strlen(tmp->nom); i < MAX_FILES_NAME_SIZE; i++)
     {
         tmp->nom[i] = '\0';
     }
     tmp->posInBlockBMP = index;
-    tmp->size = 0;
-    tmp->posSeek = 0;
+    tmp->size = 0U;
+    tmp->posSeek = 0U;
 
     // persistance des données
     saveFileBlock(*tmp,indFile);
@@ -140,13 +150,27 @@ int myWrite(File* f, void* buffer,int nBytes){
         return -1;
     }
     
+    /* Imaginons que je suis a posSeek = 3000;
+    et si il me reste 4200 byte a ecrire alors d'abord 
+    je dois ecrire 1096 byte pour remplir mon bloc puis 
+    je passe au bloc suivant et non pas ecrire 4096B 
+    comme avant.
+    d'ou la nécessité de firstFill et des conditions
+    */
+    int firstFill = BLOCK_SIZE - f->posSeek%BLOCK_SIZE;
     // save de la data dans le DataBlock
     while (toWrite > 0)
     {
         if (toWrite < BLOCK_SIZE){
             written = toWrite;
         }else{
-            written = BLOCK_SIZE;
+            if (toWrite > firstFill)
+            {
+                written = firstFill;
+                firstFill = -1;
+            }else{
+                written = BLOCK_SIZE;
+            }
         }
         if ((nbWrite = write(fd,(char*)(buffer) + offset,written)) == -1)
         {
@@ -198,27 +222,74 @@ int myWrite(File* f, void* buffer,int nBytes){
 
 
 int myRead(File* f, void* buffer, int nBytes) {
-    int fd = open(PARTITION_NAME, O_RDONLY);
-    if (fd == -1) {
-        perror("Erreur lors de l'ouverture du fichier");
+    if (nBytes < 0)
+    {
         return -1;
     }
+    
+    BlockBitmap bbmp;
+    loadBlockBitmap(&bbmp);
+    int currentIndex = indexBBMPOfPosSeekLoaded(f,bbmp);
+    int toRead = nBytes;
 
-    if (lseek(fd, f->posSeek, SEEK_SET) == -1) {
-        perror("Erreur lors du déplacement du pointeur de lecture");
+    int fd = open(PARTITION_NAME,O_RDWR);
+    if (fd == -1)
+    {
+        perror("couldn't open partition myRead");
+        return -1;
+    }
+    // Comme pour read() on lit à partir de la posSeek
+    if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET + f->posSeek%BLOCK_SIZE,SEEK_SET) == -1)
+    {
         close(fd);
+        perror("error initial seek myRead");
         return -1;
     }
 
-    int bytesRead = read(fd, buffer, nBytes);
-    if (bytesRead == -1) {
-        perror("Erreur lors de la lecture du fichier");
-        close(fd);
-        return -1;
-    }
+    int firstRead = BLOCK_SIZE - f->posSeek%BLOCK_SIZE;
+    unsigned int readB, offset=0,nbRead;
+    while (toRead > 0)
+    {
+        if (toRead < BLOCK_SIZE)
+        {
+            readB = toRead;
+        }else{
+            if (toRead > firstRead)
+            {
+                readB = firstRead;
+                firstRead = -1;
+            }else{
+                readB = BLOCK_SIZE;
+            }
+        }
+        if ((nbRead = read(fd,(char*)(buffer) + offset,readB)) == -1)
+        {
+            close(fd);
+            perror("error read myRead");
+            return -1;
+        }
+        toRead -= nbRead;
+        offset += nbRead;
 
+        if (f->size < (offset + f->posSeek))
+        {
+            break;
+        }
+        
+        if (toRead > 0)
+        {
+            currentIndex = bbmp.bmpTab[currentIndex];
+        }
+        if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET,SEEK_SET) == -1)
+        {
+            close(fd);
+            perror("error seek myRead");
+            return -1;
+        }
+    }
+    f->posSeek = f->posSeek + offset;
     close(fd);
-    return bytesRead;
+    return offset;
 }
 
 void mySeek(File* f, int offset, int base) {
@@ -281,9 +352,11 @@ void mySeek(File* f, int offset, int base) {
 unsigned int mySize(File* f){
     return f->size;
 }
+
 unsigned int myTell(File* f){
     return f->posSeek;
 }
+
 int myRename(char* oldName, char* newName){
     if (strlen(newName) > MAX_FILES_NAME_SIZE)
     {

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -I./include
+CFLAGS = -g -Wall -I./include
 
 SRC_DIR = ./src
 SRCS = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/**/*.c)
