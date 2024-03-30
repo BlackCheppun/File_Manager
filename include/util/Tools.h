@@ -1,3 +1,10 @@
+/**
+ * @file Tools.h
+ * @author Farah ALIANE
+ * @author Laurent LIN
+ * @brief 
+ */
+
 #ifndef TOOLS_H
 #define TOOLS_H
 #include "data/TypeSuperBloc.h"

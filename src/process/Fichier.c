@@ -1,10 +1,3 @@
-/**
- * @file Fichier.c
- * @author Farah ALIANE
- * @author Laurent LIN
- * @brief Permet la manipulation de File
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -19,12 +12,6 @@
 #include "util/Tools.h"
 #include "data/TypeSuperBloc.h"
 
-/**
- * @brief Ouvre (ou créer) le fichier fileName dans notre partition
- * 
- * @param fileName Nom du fichier
- * @return File* du fichier fileName | NULL si échec
- */
 File* myOpen(char* fileName){
     SuperBlock sb;
     loadSuperBlock(&sb);
@@ -143,7 +130,7 @@ int myWrite(File* f, void* buffer,int nBytes){
         return -1;
     }
     int offset=0, written, nbWrite, iFreeBlock;
-
+    // Comme pour write() on écrit à partir de la posSeek
     if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET + f->posSeek%BLOCK_SIZE,SEEK_SET) == -1)
     {
         close(fd);
@@ -208,14 +195,7 @@ int myWrite(File* f, void* buffer,int nBytes){
 
 
 
-/**
- * Lit un certain nombre d'octets à partir de la position actuelle du pointeur de lecture dans un fichier spécifié.
- *
- * @param f Un pointeur vers la structure de fichier (File) à partir duquel lire les données.
- * @param buffer Un pointeur vers un tampon (buffer) où stocker les données lues.
- * @param nBytes Le nombre d'octets à lire à partir du fichier.
- * @return Le nombre d'octets effectivement lus depuis le fichier. En cas d'erreur, retourne -1.
- */
+
 int myRead(File* f, void* buffer, int nBytes) {
     int fd = open(PARTITION_NAME, O_RDONLY);
     if (fd == -1) {
@@ -240,43 +220,58 @@ int myRead(File* f, void* buffer, int nBytes) {
     return bytesRead;
 }
 
-/**
- * Déplace le pointeur de lecture/écriture dans un fichier spécifié en fonction d'un décalage et d'une base donnée.
- *
- * @param f Un pointeur vers la structure de fichier (File) dans laquelle déplacer le pointeur de lecture/écriture.
- * @param offset Le décalage (offset) à appliquer au pointeur de lecture/écriture.
- * @param base La base à utiliser pour interpréter le décalage (offset). Les valeurs possibles sont SEEK_SET, SEEK_CUR et SEEK_END.
- */
 void mySeek(File* f, int offset, int base) {
-    int fd = open(PARTITION_NAME, O_RDONLY);
-    if (fd == -1) {
-        perror("Erreur lors de l'ouverture du fichier");
-        return;
-    }
-
-    int whence;
+    int currentPos = f->posSeek;
+    int sizeFile = f->size;
     switch (base) {
-        case SEEK_SET:
-            whence = SEEK_SET;
+        case MYSEEK_START:
+            if (offset < 0){
+                perror("seek negative from start mySeek");
+                break;
+            }
+            if (offset > sizeFile){
+                perror("seek outofbound from start mySeek");
+                break;
+            }
+            f->posSeek = offset;
             break;
-        case SEEK_CUR:
-            whence = SEEK_CUR;
+        case MYSEEK_CUR:
+            if ((currentPos + offset) < 0)
+            {
+                perror("seek outofbound from current mySeek");
+                break;
+            }
+
+            if ((currentPos + offset) > sizeFile)
+            {
+                int nbEmpty = (currentPos + offset) - sizeFile;
+                f->posSeek = f->size ;
+                char * emptyNull = (char*) malloc((nbEmpty+1) * sizeof(char));
+                for (int i = 0; i < nbEmpty; i++)
+                {
+                    emptyNull[i] = '\0';
+                }
+                myWrite(f,emptyNull,nbEmpty);
+                break;
+            }
+            
+            f->posSeek += offset;
             break;
-        case SEEK_END:
-            whence = SEEK_END;
+        case MYSEEK_END:
+            if (offset < 0)
+            {
+                perror("seek negative from end mySeek");
+                break;
+            }
+            if (offset > sizeFile)
+            {
+                perror("seek outofbound from end mySeek");
+                break;
+            }
+            f->posSeek = sizeFile - offset;
             break;
         default:
-            fprintf(stderr, "Base de recherche invalide\n");
-            close(fd);
+            perror("Unknown base mySeek");
             return;
     }
-
-    f->posSeek = lseek(fd, offset, whence);
-    if (f->posSeek == -1) {
-        perror("Erreur lors du déplacement du pointeur de lecture/écriture");
-        close(fd);
-        return;
-    }
-
-    close(fd);
 }
