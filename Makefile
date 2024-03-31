@@ -9,7 +9,7 @@ HEADER = $(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/**/*.h)
 
 OUTPUT = fileManager
 
-all: $(OUTPUT)
+all: $(OUTPUT) docs
 
 $(OUTPUT): $(SRCS) $(HEADER)
 	$(CC) $(CFLAGS) $(SRCS) -o $(OUTPUT)
