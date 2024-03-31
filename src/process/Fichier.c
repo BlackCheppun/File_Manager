@@ -76,7 +76,7 @@ File* myOpen(char* fileName){
     close(fd);
 
 
-    int indFile = NUMBER_OF_BLOCK - sb.nbFileDispo;
+    unsigned int indFile = NUMBER_OF_BLOCK - sb.nbFileDispo;
     sb.nbFileDispo--;
     // Uninitialised value by valgrind ???
     File* tmp = (File*) malloc(sizeof(File));
@@ -193,6 +193,7 @@ int myWrite(File* f, void* buffer,int nBytes){
             return -1;
         }
     }
+    // si on ecrit dans un nouveau bloc alors on doit le marquer comme fin
     if (bbmp.bmpTab[currentIndex] == 0){
         bbmp.bmpTab[currentIndex] = USHRT_MAX;
     }
@@ -219,11 +220,10 @@ int myWrite(File* f, void* buffer,int nBytes){
     return nBytes;
 }
 
-
-
 int myRead(File* f, void* buffer, int nBytes) {
     if (nBytes < 0)
     {
+        perror("Cannot read negative value");
         return -1;
     }
     
@@ -232,7 +232,7 @@ int myRead(File* f, void* buffer, int nBytes) {
     int currentIndex = indexBBMPOfPosSeekLoaded(f,bbmp);
     int toRead = nBytes;
 
-    int fd = open(PARTITION_NAME,O_RDWR);
+    int fd = open(PARTITION_NAME,O_RDONLY);
     if (fd == -1)
     {
         perror("couldn't open partition myRead");
@@ -247,45 +247,65 @@ int myRead(File* f, void* buffer, int nBytes) {
     }
 
     int firstRead = BLOCK_SIZE - f->posSeek%BLOCK_SIZE;
-    unsigned int readB, offset=0,nbRead;
-    while (toRead > 0)
+    unsigned int readB, offset=0;
+    int end = 0, isFirstRead=1;
+    // On sort si on a finit de lire OU on est arrivé a la fin du fichier
+    while (!end)
     {
-        if (toRead < BLOCK_SIZE)
+        // imaginons que on a plus que 200 B dans notre fichier mais qu'on veut lire encore 500 
+        if (f->size - (f->posSeek+offset) < toRead)
         {
-            readB = toRead;
-        }else{
-            if (toRead > firstRead)
+            readB = f->size - (f->posSeek+offset);
+        }
+        else
+        {
+            // La premiere fois on doit lire jusquau bout du bloc disque 
+            //(posSeek : 3200 => lire 896 pour completer le bloc disque)
+            if (isFirstRead && firstRead < toRead)
             {
                 readB = firstRead;
-                firstRead = -1;
-            }else{
-                readB = BLOCK_SIZE;
+                isFirstRead = 0;
+            }else
+            {
+                // si il nous reste 300 B à lire mais quon a encore beaucoup de size
+                if (toRead < BLOCK_SIZE)
+                {
+                    readB = toRead;
+                }else{
+                    // on a encore beaucoup a lire donc on lit un bloc disque
+                    readB = BLOCK_SIZE;
+                }
+                
             }
         }
-        if ((nbRead = read(fd,(char*)(buffer) + offset,readB)) == -1)
+        if ((read(fd,(char*)buffer+offset,readB))==-1)
         {
             close(fd);
             perror("error read myRead");
             return -1;
         }
-        toRead -= nbRead;
-        offset += nbRead;
+        
+        offset += readB;
+        toRead -= readB;
 
-        if (f->size < (offset + f->posSeek))
+        if (f->size - (f->posSeek+offset) <= 0 || toRead <= 0)
         {
-            break;
+            end = 1;
+        }else{
+            // déplacement dans le prochain bloc
+            if (((f->posSeek+offset)%BLOCK_SIZE) == 0)
+            {
+                currentIndex = bbmp.bmpTab[currentIndex];
+            }
+            
+            if ((lseek(fd,currentIndex * BLOCK_SIZE + DATABLOCK_OFFSET, SEEK_SET))==-1)
+            {
+                close(fd);
+                perror("error seek myRead");
+                return -1;
+            }
         }
         
-        if (toRead > 0)
-        {
-            currentIndex = bbmp.bmpTab[currentIndex];
-        }
-        if (lseek(fd,(currentIndex*BLOCK_SIZE) + DATABLOCK_OFFSET,SEEK_SET) == -1)
-        {
-            close(fd);
-            perror("error seek myRead");
-            return -1;
-        }
     }
     f->posSeek = f->posSeek + offset;
     close(fd);
@@ -348,6 +368,54 @@ void mySeek(File* f, int offset, int base) {
     }
 }
 
+int myDelete(char* fileName){
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    File fileArray[NUMBER_OF_BLOCK];
+    loadFileBlock(fileArray);
+    BlockBitmap bbmp;
+    loadBlockBitmap(&bbmp);
+
+    int nbActu = sb.totalFile - sb.nbFileDispo;
+    int i = 0;
+    // indice du tableau File
+    while(i < nbActu && strcmp(fileArray[i].nom,fileName)!=0)
+    {
+        i++;
+    }
+
+    if (i>=nbActu)
+    {
+        perror("File not found");
+        return -1;
+    }
+    sb.nbFileDispo++;
+    // Effacement virtuel, on efface juste notre liste et de la bitmap
+    int currentIndex = fileArray[i].posInBlockBMP;
+    int next = bbmp.bmpTab[currentIndex];
+    // echange (shift)
+    for (int j = i; j < nbActu - 1; j++) {
+        fileArray[j] = fileArray[j + 1];
+    }
+    fileArray[nbActu - 1].nom[0] = '\0';
+    // effacer dans le block bitmap
+    while (next != USHRT_MAX) {
+        bbmp.bmpTab[currentIndex] = 0;
+        currentIndex = next;
+        next = bbmp.bmpTab[currentIndex];
+        sb.nbBlockDispo++;
+    }
+    bbmp.bmpTab[currentIndex] = 0;
+    sb.nbBlockDispo++;
+    // persistance des données
+    saveSuperBlock(sb);
+    for (int j = i; j < nbActu; j++)
+    {
+        saveFileBlock(fileArray[j],j);
+    }
+    saveBBMP(bbmp);
+    return 0;
+}
 
 unsigned int mySize(File* f){
     return f->size;

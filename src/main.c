@@ -13,12 +13,26 @@
 #include "util/Tools.h"
 
 char* PARTITION_NAME;
+void showHelpMessage();
+void displayMenu();
 
 int main(int argc, char** argv){
-    char* nom = "mapartition.bin";
-    PARTITION_NAME = nom;
-    myFormat(nom);
+    if (argc != 2)
+    {
+        printf("Usage: fileManager [partitionName]\n");
+        printf("Try 'fileManager -h' for more information.\n");
+        return 0;
+    }
+    if (strcmp(argv[1], "-h") == 0)
+    {
+        showHelpMessage();
+        return 0;
+    }
     
+    PARTITION_NAME = argv[1];
+    // Ask for format
+    myFormat(PARTITION_NAME);
+    // displayMenu();
     // printf("nb octet pour offset : %ld\n",BLOCK_BITMAP_SIZE);
     // printf("taille de superblock : %ld\n",sizeof(SuperBlock));
     // printf("taille de directory : %ld\n",sizeof(Directory));
@@ -45,7 +59,6 @@ int main(int argc, char** argv){
         printf("Je suis NULL\n");
     }else{
         myWrite(file,bigmsg,strlen(bigmsg));
-        myWrite(file,bigmsg,strlen(bigmsg));
     }
     File* file2 = myOpen("monSuperTexte");
     
@@ -57,14 +70,52 @@ int main(int argc, char** argv){
         myWrite(file2,msg1,strlen(msg1));
     }
     myWrite(file,bigmsg,strlen(bigmsg));
-    mySeek(file,8200,MYSEEK_START);
+    mySeek(file2,0,MYSEEK_START);
     char buf[5000] = "";
-    int nb = myRead(file,&buf,4099);
-    buf[4100] = '\0';
-    printf("texte lu : %s\n",buf);
-    printf("jai lu : %d\n",nb);
+    int nb = myRead(file2,&buf,99);
+    if(nb != -1){
+        buf[4100] = '\0';
+        printf("texte lu : %s\n",buf);
+        printf("jai lu : %d\n",nb);
+    }
+    myDelete("papi");
     free(f);
     free(file);
     free(file2);
     return 0;
+}
+
+
+void showHelpMessage(){
+    printf("Usage: fileManager [partitionName]\n");
+    printf("Description:\n");
+    printf("  This program is a simple file manager simulation.\n");
+    printf("  It allows you to perform various operations on a virtual disk partition.\n\n");
+    printf("Example:\n");
+    printf("  fileManager maPartition.bin\n");
+    printf("    Launch the program and open the specified partition to work on.\n\n");
+}
+
+void displayMenu() {
+    int choice;
+    do {
+        printf("\nMenu: (working on : %s)\n",PARTITION_NAME);
+        printf("1. Create File\n");
+        printf("2. Delete File\n");
+        printf("3. Read File\n");
+        printf("4. Write to File\n");
+        printf("5. List Files\n");
+        printf("6. Format partition\n");
+        printf("7. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 7:
+                printf("Exiting...\n");
+                break;
+            default:
+                printf("Invalid choice! Please enter a number between 1 and 6.\n");
+        }
+    } while (choice != 6);
 }

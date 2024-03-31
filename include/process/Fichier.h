@@ -80,9 +80,18 @@ unsigned int myTell(File* f);
  * 
  * @param oldName nom du fichier
  * @param newName son nouveau nom
- * @return int 0 en cas de réussite | 1 échec
+ * @return int 0 en cas de réussite | -1 échec
  */
 int myRename(char* oldName, char* newName);
+
+/**
+ * @brief Efface le fichier fileName et réorganise la zone réservée
+ * <br/>
+ * <strong>Attention il ne supprime pas de manière sécurisé (vos données sont encores présentes dans la partition)</strong>
+ * @param fileName nom du fichier à supprimer
+ * @return int 0 eb cas de réussite | -1 échec 
+ */
+int myDelete(char* fileName);
 
 
 #endif

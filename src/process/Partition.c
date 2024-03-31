@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include "util/constant.h"
 #include "data/TypeFichier.h"
 #include "data/TypeDossier.h"
@@ -15,6 +16,37 @@ int myFormat(char* nomPartition){
         return -1;
     }
     
+    // Vérification si contient ALS ou si new file alors on autorise le formatage
+    off_t fileSize = lseek(fd,0,SEEK_END);
+    if (fileSize == -1) {
+        perror("erreur lors de la recherche de la taille du fichier");
+        close(fd);
+        return -1;
+    }
+    // si different de 0 alors on check si il y a le tag 'ALS'
+    if (fileSize > 0)
+    {
+        //se positionner sur la bonne zone pour lire
+        if(lseek(fd,14,SEEK_SET) == -1){
+            perror("erreur seek myFormat");
+            close(fd);
+            return -1;
+        }
+        char FSproperties[4] = "";
+        if (read(fd,FSproperties,4) == -1)
+        {
+            perror("erreur read properties myFormat");
+            close(fd);
+            return -1;
+        }
+        if (strcmp(FSproperties,"ALS")!=0)
+        {
+            perror("erreur le fichier n'appartient pas a ALS");
+            close(fd);
+            return -1;
+        }
+    }
+
     off_t newPosition = lseek(fd, PARTITION_SIZE-1, SEEK_SET);
 
     if (newPosition == -1) {

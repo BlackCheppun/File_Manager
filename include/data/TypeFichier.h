@@ -9,7 +9,7 @@
 #include "util/constant.h"
 /**
  * @brief Un fichier est caractérisé par plusieurs informations :
- * Les 2 plus importantes sont indice dans le tableau BlockBitmap 
+ * Les 2 plus importantes sont : l'indice dans le tableau BlockBitmap 
  * et l'indice virtuel dans le fichier.
  */
 typedef struct TypeFichier
