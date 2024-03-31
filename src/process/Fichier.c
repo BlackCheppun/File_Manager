@@ -452,7 +452,6 @@ int myRename(char* oldName, char* newName){
         {
             tmp.nom[j] = '\0';
         }
-        printf("new name %s\n",tmp.nom);
         saveFileBlock(tmp,i);
         return 0;
     }

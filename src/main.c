@@ -13,8 +13,17 @@
 #include "util/Tools.h"
 
 char* PARTITION_NAME;
+void pauseEnter();
 void showHelpMessage();
 void displayMenu();
+void handleCreateFile();
+void handleDeleteFile();
+void handleRenameFile();
+void handleReadFile();
+void handleModifyFile();
+void handleListFile();
+void handleFormatPartition();
+void handleVisualizePartition();
 
 int main(int argc, char** argv){
     if (argc != 2)
@@ -31,8 +40,10 @@ int main(int argc, char** argv){
     
     PARTITION_NAME = argv[1];
     // Ask for format
+    displayMenu();
+
+    /*
     myFormat(PARTITION_NAME);
-    // displayMenu();
     // printf("nb octet pour offset : %ld\n",BLOCK_BITMAP_SIZE);
     // printf("taille de superblock : %ld\n",sizeof(SuperBlock));
     // printf("taille de directory : %ld\n",sizeof(Directory));
@@ -82,7 +93,9 @@ int main(int argc, char** argv){
     free(f);
     free(file);
     free(file2);
+    */
     return 0;
+
 }
 
 
@@ -102,20 +115,155 @@ void displayMenu() {
         printf("\nMenu: (working on : %s)\n",PARTITION_NAME);
         printf("1. Create File\n");
         printf("2. Delete File\n");
-        printf("3. Read File\n");
-        printf("4. Write to File\n");
-        printf("5. List Files\n");
-        printf("6. Format partition\n");
-        printf("7. Exit\n");
-        printf("Enter your choice: ");
+        printf("3. Rename File\n");
+        printf("4. Read File\n");
+        printf("5. Modify File\n");
+        printf("6. List Files\n");
+        printf("7. Format Partition\n");
+        printf("8. Visualize Partition\n");
+        printf("9. Exit\n");
+        printf("Enter your choice: \n");
+
         scanf("%d", &choice);
 
         switch (choice) {
+            case 1:
+                handleCreateFile();
+                break;
+            case 2:
+                handleDeleteFile();
+                break;
+            case 3:
+                handleRenameFile();
+                break;
+            case 4:
+                handleReadFile();
+                break;
+            case 5:
+                handleModifyFile();
+                break;
+            case 6:
+                handleListFile();
+                break;
             case 7:
+                handleFormatPartition();
+                break;
+            case 8:
+                handleVisualizePartition();
+                break;
+            case 9:
                 printf("Exiting...\n");
                 break;
             default:
-                printf("Invalid choice! Please enter a number between 1 and 6.\n");
+                printf("Invalid choice! Please enter a number between 1 and 9.\n");
         }
-    } while (choice != 6);
+    } while (choice != 9);
+}
+
+void handleCreateFile(){
+    char buf[128] = "";
+    char bigBuffer[2049]= "";
+    File* tmp;
+    printf("File name : ");
+    scanf(" %s",buf);
+    if((tmp = myOpen(buf))==NULL){
+        printf("Something went wrong when creating file.\n");
+        exit(1);
+    }
+    printf("Content (2048 char max per input) (terminate writing with a dot '.' on a new line): \n");
+    while (bigBuffer[0] != '.')
+    {
+        scanf(" %[^\n]s",bigBuffer);
+        bigBuffer[2048] = '\0';
+        if (myWrite(tmp,bigBuffer,strlen(bigBuffer))== -1){
+            printf("Error when writing to file");
+            exit(1);
+        }
+    }
+    printf("Successfully created file : %s\n",tmp->nom);
+    free(tmp);
+}
+
+
+void handleDeleteFile(){
+    char buf[128] = "";
+    printf("Specify which file to delete : ");
+    scanf(" %[^\n]s",buf);
+    if (strlen(buf) > MAX_FILES_NAME_SIZE)
+    {
+        printf("Filename cannot exceed %u char",MAX_FILES_NAME_SIZE);
+        return;
+    }
+    if (myDelete(buf)==-1)
+    {
+        printf("Error when deleting file (does not exist or bad match), case sensitive\n");
+        return;
+    }
+    printf("Successfully deleted file : %s",buf);
+}
+void handleRenameFile(){
+    char buf[128] = "";
+    char rename[65] = "";
+    printf("Specify which file to rename: \n");
+    scanf(" %[^\n]s",buf);
+    printf("Renaming to : \n");
+    scanf(" %[^\n]s",rename);
+    if (strlen(buf) > MAX_FILES_NAME_SIZE || strlen(rename) > MAX_FILES_NAME_SIZE)
+    {
+        printf("Filename cannot exceed %u char",MAX_FILES_NAME_SIZE);
+        return;
+    }
+    if (myRename(buf,rename)==-1)
+    {
+        printf("Error when renaming file (does not exist or bad match), case sensitive\n");
+        return;
+    }
+    printf("Successfully renamed file from : %s to : %s",buf,rename);
+}
+void handleReadFile(){
+    
+}
+void handleModifyFile(){
+    
+}
+void handleListFile(){
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    File array[NUMBER_OF_BLOCK];
+    loadFileBlock(array);
+    int i = 0;
+    int nbFile = sb.totalFile - sb.nbFileDispo;
+    printf("\nFiles in %s :\n",PARTITION_NAME);
+    while (i < nbFile)
+    {
+        printf("-> %s\n",array[i].nom);
+        i++;
+    }
+    pauseEnter();
+}
+void handleFormatPartition(){
+    char accept;
+    printf("This action will erase all file in %s, are you sure ? (Y/N)\n",PARTITION_NAME);
+    scanf("%c",&accept);
+    if (accept == 'Y' || accept == 'y')
+    {
+        if (myFormat(PARTITION_NAME)==-1)
+        {
+            printf("Something went wrong when formatting, perhaps we didn't recognized our proprietary label, please delete manually.\n");
+            exit(1);
+        }
+        printf("Successfully formated partition.\n");
+    }
+}
+void handleVisualizePartition(){
+    
+}
+
+void pauseEnter(void)
+{
+    printf("Press Enter to continue...");
+    fflush(stdout); // Flush the output buffer to ensure the prompt is displayed immediately
+    char enter;
+    scanf("%c", &enter); 
+    while (getchar() != '\n');
 }
