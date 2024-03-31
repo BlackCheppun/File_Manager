@@ -3,7 +3,9 @@
  * @brief Définition des constantes utilisé
  * On pourra redéfinir ces constant en override avant d'appeler le fichier
  */
-
+/**
+ * @brief Nom du fichier dans lequel on va travailler virtuellement dessus
+*/
 extern char* PARTITION_NAME;
 
 #ifndef BLOCK_SIZE

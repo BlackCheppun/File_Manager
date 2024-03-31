@@ -10,12 +10,6 @@
 #include "data/TypeBitmap.h"
 
 
-/**
- * @brief Retourne l'indice du premier bloc vide
- * 
- * @param bbmp 
- * @return int i s'il existe | -1 si non trouvé
- */
 int indexOfFreeBBMP(BlockBitmap bbmp){
     int i= 0;
     while (i< BLOCK_BITMAP_ARRAY_SIZE && bbmp.bmpTab[i] != 0)

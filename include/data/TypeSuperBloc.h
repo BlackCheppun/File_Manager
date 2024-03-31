@@ -23,7 +23,9 @@ typedef struct sb{
     unsigned short nbFileDispo;
     /// @brief Nombre total de dossier possible par rapport au bloc Dossier
     unsigned short totalDirectory;
+    /// @brief Nombre restant de dossier créable
     unsigned short nbDirectoryDispo;
+    /// @brief Marqueur de propriété (pour éviter de casser d'autre fichier)
     char fs_name[4];
 } SuperBlock;
 
