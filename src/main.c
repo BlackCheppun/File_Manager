@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <limits.h>
 #include "process/Fichier.h"
 #include "process/Partition.h"
 #include "data/TypeSuperBloc.h"
@@ -41,17 +42,7 @@ int main(int argc, char** argv){
     PARTITION_NAME = argv[1];
     // Ask for format
     displayMenu();
-
     /*
-    myFormat(PARTITION_NAME);
-    // printf("nb octet pour offset : %ld\n",BLOCK_BITMAP_SIZE);
-    // printf("taille de superblock : %ld\n",sizeof(SuperBlock));
-    // printf("taille de directory : %ld\n",sizeof(Directory));
-    // printf("taille totale partition : %ld\n",PARTITION_SIZE);
-    // printf("taille partie reserve partition : %ld\n",DATABLOCK_OFFSET);
-    // printf("taille partie libre partition : %ld\n",PARTITION_SIZE-DATABLOCK_OFFSET);
-    // printf("%%used par reserve partition : %.3f%%\n", (float)DATABLOCK_OFFSET/(float)PARTITION_SIZE);
-
     File* f = myOpen("coucou");
     
     if (f != NULL)
@@ -81,18 +72,12 @@ int main(int argc, char** argv){
         myWrite(file2,msg1,strlen(msg1));
     }
     myWrite(file,bigmsg,strlen(bigmsg));
-    mySeek(file2,0,MYSEEK_START);
-    char buf[5000] = "";
-    int nb = myRead(file2,&buf,99);
-    if(nb != -1){
-        buf[4100] = '\0';
-        printf("texte lu : %s\n",buf);
-        printf("jai lu : %d\n",nb);
-    }
-    myDelete("papi");
+    char smolbuf[4096] = {'a'};
+    myWrite(file,smolbuf,strlen(smolbuf));
     free(f);
     free(file);
     free(file2);
+    
     */
     return 0;
 
@@ -164,7 +149,7 @@ void handleCreateFile(){
     char buf[128] = "";
     char bigBuffer[2049]= "";
     File* tmp;
-    printf("File name : ");
+    printf("File name : \n");
     scanf(" %s",buf);
     if((tmp = myOpen(buf))==NULL){
         printf("Something went wrong when creating file.\n");
@@ -218,14 +203,114 @@ void handleRenameFile(){
         printf("Error when renaming file (does not exist or bad match), case sensitive\n");
         return;
     }
-    printf("Successfully renamed file from : %s to : %s",buf,rename);
+    printf("Successfully renamed file from : %s to : %s ",buf,rename);
 }
+
 void handleReadFile(){
-    
+    char buf[128] = "";
+    int nbToRead= 0;
+    int offset= 0;
+    int base= 0;
+    int totalRead;
+    File* tmp;
+    printf("File name : ");
+    scanf(" %s",buf);
+    if((tmp = myOpen(buf))==NULL){
+        printf("Something went wrong when opening file.\n");
+        exit(1);
+    }
+    printf("\nHow much char (-1 to show all) : ");
+    scanf(" %d",&nbToRead);
+    if (nbToRead != -1)
+    {
+        printf("\nWhich base : \n");
+        printf("1. Start\n");
+        printf("2. Specific\n");
+        printf("3. End\n");
+        scanf(" %d",&base);
+        if (base > 3 || base < 1)
+        {
+            free(tmp);
+            printf("Error when choosing Base");
+            return;
+        }
+        
+        printf("Offset  : \n");
+        scanf(" %d",&offset);
+        char* bufferMsg = (char*)malloc((nbToRead+1)*sizeof(nbToRead));
+        mySeek(tmp,offset,base-1);
+
+        if ((totalRead = myRead(tmp,bufferMsg,nbToRead)) == -1)
+        {
+            free(tmp);
+            free(bufferMsg);
+            printf("Error when reading file");
+            return;
+        }
+        bufferMsg[totalRead] = '\0';
+        printf("%s",bufferMsg);
+    }else{
+        char * msg = (char*) malloc((1+tmp->size)*sizeof(char));
+        if ((totalRead = myRead(tmp,msg,tmp->size))==-1)
+        {
+            free(tmp);
+            free(msg);
+            printf("Error when reading the whole file\n");
+            return;
+        }
+        msg[totalRead] = '\0';
+        printf("%s\n",msg);
+        free(msg);
+    }
+    free(tmp);
+    pauseEnter();
 }
+
 void handleModifyFile(){
+    char buf[128] = "";
+    char bufMsg[2049] = "";
+
+    int offset= 0;
+    int base= 0;
+    File* tmp;
+    printf("File name : ");
+    scanf(" %s",buf);
+    if((tmp = myOpen(buf))==NULL){
+        printf("Something went wrong when opening file.\n");
+        exit(1);
+    }
+    printf("\nWhich base : \n");
+    printf("1. Start\n");
+    printf("2. Specific\n");
+    printf("3. End\n");
+    scanf(" %d",&base);
+    if (base > 3 || base < 1)
+    {
+        free(tmp);
+        printf("Error when choosing Base");
+        return;
+    }
     
+    printf("Offset  : \n");
+    scanf(" %d",&offset);
+    
+    mySeek(tmp,offset,base-1);
+    
+    printf("Content (2048 char max per input) (terminate writing with a dot '.' on a new line): \n");
+    while (bufMsg[0] != '.')
+    {
+        scanf(" %[^\n]s",bufMsg);
+        bufMsg[2048] = '\0';
+        if (myWrite(tmp,bufMsg,strlen(bufMsg))== -1){
+            free(tmp);
+            printf("Error when writing to file");
+            return;
+        }
+    }
+    free(tmp);
+    pauseEnter();
 }
+
 void handleListFile(){
     SuperBlock sb;
     loadSuperBlock(&sb);
@@ -242,9 +327,9 @@ void handleListFile(){
     pauseEnter();
 }
 void handleFormatPartition(){
-    char accept;
-    printf("This action will erase all file in %s, are you sure ? (Y/N)\n",PARTITION_NAME);
-    scanf("%c",&accept);
+    char accept = 'a';
+    printf("This action will erase all file in %s, are you sure ? (Takes 30-50 seconds) (Y/N) \n",PARTITION_NAME);
+    scanf(" %c",&accept);
     if (accept == 'Y' || accept == 'y')
     {
         if (myFormat(PARTITION_NAME)==-1)
@@ -254,15 +339,44 @@ void handleFormatPartition(){
         }
         printf("Successfully formated partition.\n");
     }
+    pauseEnter();
 }
 void handleVisualizePartition(){
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    BlockBitmap bbmp;
+    loadBlockBitmap(&bbmp);
+    File array[NUMBER_OF_BLOCK];
+    loadFileBlock(array);
+    printSB(sb);
+    printBBMP(bbmp);
+    printf("Data disk usage : %.3f%%\n", (float)(sb.totalBlock-sb.nbBlockDispo)/(float)sb.totalBlock);
+    int nbFile = sb.totalFile - sb.nbFileDispo;
+    int cpt = 0;
+    for (int i = 0; i < nbFile; i++)
+    {
+        cpt = array[i].posInBlockBMP;
+        printf("\tFile : %s\n",array[i].nom);
+        printf("\t\tIndex blocks : ");
+        while (cpt != USHRT_MAX)
+        {
+            printf("%u ",cpt);
+            cpt = bbmp.bmpTab[cpt];
+            if (cpt != USHRT_MAX)
+            {
+                printf("-> ");
+            }
+        }
+        printf("\n\t\tSize : %uB\n",array[i].size);
+    }
     
+    pauseEnter();
 }
 
 void pauseEnter(void)
 {
     printf("Press Enter to continue...");
-    fflush(stdout); // Flush the output buffer to ensure the prompt is displayed immediately
+    fflush(stdout);
     char enter;
     scanf("%c", &enter); 
     while (getchar() != '\n');

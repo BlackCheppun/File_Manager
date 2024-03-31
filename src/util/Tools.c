@@ -247,14 +247,14 @@ int loadDirBlock(Directory* dirArray){
 
 void printSB(SuperBlock sb){
     printf("SuperBlock infos :\n");
-    printf("\tNb total de blocs : %u\n",sb.totalBlock);
-    printf("\tTaille d'un bloc : %u\n",sb.tailleBlock);
-    printf("\tNb blocs dispo : %u\n",sb.nbBlockDispo);
-    printf("\tNb total de file : %u\n",sb.totalFile);
-    printf("\tNb file dispo : %u\n",sb.nbFileDispo);
-    printf("\tNb total de directory : %u\n",sb.totalDirectory);
-    printf("\tNb directory dispo : %u\n",sb.nbDirectoryDispo);
-    printf("\tPropriete file system : %c%c%c\n",sb.fs_name[0],sb.fs_name[1],sb.fs_name[2]);
+    printf("\tTotal blocks : %u\n",sb.totalBlock);
+    printf("\tSize of block : %u\n",sb.tailleBlock);
+    printf("\tRemaining blocks : %u\n",sb.nbBlockDispo);
+    printf("\tTotal files : %u\n",sb.totalFile);
+    printf("\tRemaining files : %u\n",sb.nbFileDispo);
+    printf("\tTotal directories : %u\n",sb.totalDirectory);
+    printf("\tRemaining directories : %u\n",sb.nbDirectoryDispo);
+    printf("\tProprietary file system : %c%c%c\n",sb.fs_name[0],sb.fs_name[1],sb.fs_name[2]);
 }
 void printBBMP(BlockBitmap bbmp){
     printf("BlockBitmap infos :\n");
@@ -263,9 +263,9 @@ void printBBMP(BlockBitmap bbmp){
     for (int i = 0; i < BLOCK_BITMAP_ARRAY_SIZE; i++)
     {
         printf("'%u'",bbmp.bmpTab[i]);
-        if ((i+1)%(BLOCK_BITMAP_ARRAY_SIZE/64) == 0)printf("\nL%d:\t",cpt++);
+        if ((i+1)%(BLOCK_BITMAP_ARRAY_SIZE/64) == 0 && cpt != 64)printf("\nL%d:\t",cpt++);
     }
-    
+    printf("\n");
 }
 void printFILE(File array[]){
     printf("FileBlock infos :\n");

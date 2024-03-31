@@ -91,7 +91,7 @@ File* myOpen(char* fileName){
     tmp->posInBlockBMP = index;
     tmp->size = 0U;
     tmp->posSeek = 0U;
-
+    sb.nbBlockDispo--;
     // persistance des données
     saveFileBlock(*tmp,indFile);
     saveSuperBlock(sb);
@@ -108,18 +108,23 @@ int myWrite(File* f, void* buffer,int nBytes){
     /*
         Block = 512
         Size = 330
-        Seek = 300
-        Msg = 810
+        Seek = 330
+        Msg = 110
         Cb de bloc ?
-        X = Seek + Msg : 1110
+        X = Seek + Msg : 440
         X < Size ? Pas bsoin de bloc
         X > Size ? 
-            (X - Size)(770)/Block(512) = 1.4 => 2 bloc en plus
+            (X - Size)(110)/Block(512) = 0.4 => 1 bloc en plus
     */
     unsigned int nbBlocNeed = 0;
     if (X > f->size)
     {
-        nbBlocNeed = ((int)(X-f->size) / BLOCK_SIZE) + (((int)(X-f->size) % BLOCK_SIZE) != 0);
+        // nbBlocNeed = ((int)(X-f->size) / BLOCK_SIZE) + (((int)(X-f->size) % BLOCK_SIZE) != 0);
+        nbBlocNeed = (X - f->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+        if ((f->posSeek%BLOCK_SIZE + nBytes) <+ BLOCK_SIZE)
+        {
+            nbBlocNeed--;
+        }
     }
     // calcul de bloc dispo
     if (sb.nbBlockDispo < nbBlocNeed)
@@ -127,7 +132,7 @@ int myWrite(File* f, void* buffer,int nBytes){
         perror("Not enough block myWrite");
         return -1;
     }
-    sb.nbBlockDispo -= nbBlocNeed;
+    sb.nbBlockDispo = sb.nbBlockDispo - nbBlocNeed;
 
     // deplacement initial vers la tete du curseur
     int currentIndex = indexBBMPOfPosSeekLoaded(f,bbmp);
