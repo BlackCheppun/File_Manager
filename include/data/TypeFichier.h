@@ -6,7 +6,7 @@
  */
 #ifndef TYPE_FICHIER_H
 #define TYPE_FICHIER_H
-#include "util/constant.h"
+#include "../util/constant.h"
 /**
  * @brief Un fichier est caractérisé par plusieurs informations :
  * Les 2 plus importantes sont : l'indice dans le tableau BlockBitmap 

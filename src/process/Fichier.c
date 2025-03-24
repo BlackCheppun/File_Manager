@@ -6,11 +6,11 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "process/Fichier.h"
-#include "data/TypeDossier.h"
-#include "util/constant.h"
-#include "util/Tools.h"
-#include "data/TypeSuperBloc.h"
+#include "../../include/process/Fichier.h"
+#include "../../include/data/TypeDossier.h"
+#include "../../include/util/constant.h"
+#include "../../include/util/Tools.h"
+#include "../../include/data/TypeSuperBloc.h"
 
 File* myOpen(char* fileName){
     if (strlen(fileName) > MAX_FILES_NAME_SIZE)

@@ -6,14 +6,15 @@
  */
 #ifndef TYPE_BITMAP_H
 #define TYPE_BITMAP_H
-#include "util/constant.h"
+#include "../util/constant.h"
 /**
- * @brief Cette structure contient l'indice du 
- * prochain bloc où trouver l'information, si elle 
+ * @brief Cette structure contient l'indice du
+ * prochain bloc où trouver l'information, si elle
  * contient USHRT_MAX alors on arrive à la fin du fichier.<br/>
  * Contient 0 si le bloc est libre.
  */
-typedef struct bmp{
+typedef struct bmp
+{
     /**
      * @brief Tableau contenant les indices
      */

@@ -3,12 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "util/Tools.h"
-#include "data/TypeSuperBloc.h"
-#include "data/TypeFichier.h"
-#include "data/TypeDossier.h"
-#include "data/TypeBitmap.h"
-
+#include "../../include/util/Tools.h"
+#include "../../include/data/TypeSuperBloc.h"
+#include "../../include/data/TypeFichier.h"
+#include "../../include/data/TypeDossier.h"
+#include "../../include/data/TypeBitmap.h"
 
 int indexOfFreeBBMP(BlockBitmap bbmp){
     int i= 0;

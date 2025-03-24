@@ -6,12 +6,12 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <limits.h>
-#include "process/Fichier.h"
-#include "process/Partition.h"
-#include "data/TypeSuperBloc.h"
-#include "data/TypeDossier.h"
-#include "util/constant.h"
-#include "util/Tools.h"
+#include "../include/process/Fichier.h"
+#include "../include/process/Partition.h"
+#include "../include/data/TypeSuperBloc.h"
+#include "../include/data/TypeDossier.h"
+#include "../include/util/constant.h"
+#include "../include/util/Tools.h"
 
 char* PARTITION_NAME;
 void pauseEnter();

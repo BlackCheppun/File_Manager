@@ -7,7 +7,7 @@
 #ifndef FICHIER_H
 #define FICHIER_H
 
-#include "data/TypeFichier.h"
+#include "../data/TypeFichier.h"
 /**
  * @brief Calcul par rapport au début du fichier
  */

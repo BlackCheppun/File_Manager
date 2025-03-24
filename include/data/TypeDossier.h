@@ -6,8 +6,8 @@
  */
 #ifndef TYPE_DOSSIER_H
 #define TYPE_DOSSIER_H
-#include "data/TypeFichier.h"
-#include "util/constant.h"
+#include "../data/TypeFichier.h"
+#include "../util/constant.h"
 
 /**
  * @brief Un sous-élément (enfant) du dossier contient 2 informations 

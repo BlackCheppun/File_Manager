@@ -2,10 +2,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-#include "util/constant.h"
-#include "data/TypeFichier.h"
-#include "data/TypeDossier.h"
-#include "process/Partition.h"
+#include "../../include/util/constant.h"
+#include "../../include/data/TypeFichier.h"
+#include "../../include/data/TypeDossier.h"
+#include "../../include/process/Partition.h"
 
 int myFormat(char* nomPartition){
     int fd = open(nomPartition,O_CREAT|O_RDWR,0644);
