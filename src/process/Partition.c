@@ -28,26 +28,6 @@ int myFormat(char *nomPartition)
     // si different de 0 alors on check si il y a le tag 'ALS'
     if (fileSize > 0)
     {
-        // // se positionner sur la bonne zone pour lire
-        // if (lseek(fd, 14, SEEK_SET) == -1)
-        // {
-        //     perror("erreur seek myFormat");
-        //     close(fd);
-        //     return -1;
-        // }
-        // char FSproperties[4] = "";
-        // if (read(fd, FSproperties, 4) == -1)
-        // {
-        //     perror("erreur read properties myFormat");
-        //     close(fd);
-        //     return -1;
-        // }
-        // if (strcmp(FSproperties, "ALS") != 0)
-        // {
-        //     perror("erreur le fichier n'appartient pas a ALS");
-        //     close(fd);
-        //     return -1;
-        // }
         if (lseek(fd, 18, SEEK_SET) == -1)
         {
             perror("erreur seek myFormat");
