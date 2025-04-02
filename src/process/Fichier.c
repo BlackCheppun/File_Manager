@@ -118,6 +118,7 @@ File *myOpen(char *fileName, short dirID)
 
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
+    dirArray[dirIndex].nbFiles++;
     saveDirBlock(dirArray);
 
     // Update filesystem metadata
