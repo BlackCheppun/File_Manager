@@ -31,17 +31,31 @@ File *myOpen(char *fileName, short dirID)
 
     // Check if file already exists in this directory
     int nbActualFiles = sb.totalFile - sb.nbFileDispo;
+    File *foundFile = NULL;
     for (int i = 0; i < nbActualFiles; i++)
     {
         if (strcmp(fileArray[i].nom, fileName) == 0 && fileArray[i].parentIndex == dirID)
         {
-            File *existing = malloc(sizeof(File));
-            if (!existing)
-                return NULL;
-
-            *existing = fileArray[i]; // Copy all file data
-            return existing;
+            foundFile = &fileArray[i];
+            break;
         }
+    }
+
+    // If file exists, handle it
+    if (foundFile) {
+        // If it's a symbolic link, resolve it
+        if (foundFile->linkType == LINK_TYPE_SYMBOLIC) {
+            // Recursively open the target file
+            return myOpen(foundFile->targetPath, dirID);
+        }
+        
+        // For regular files and hard links, return a copy
+        File *existing = malloc(sizeof(File));
+        if (!existing)
+            return NULL;
+
+        *existing = *foundFile; // Copy all file data
+        return existing;
     }
 
     // Check directory exists and has space
@@ -99,10 +113,11 @@ File *myOpen(char *fileName, short dirID)
     newFile->posInBlockBMP = freeIndex;
     newFile->size = 0;
     newFile->posSeek = 0;
-    newFile->parentIndex = dirID; // Critical: Set directory association
+    newFile->parentIndex = dirID;
+    newFile->linkType = LINK_TYPE_NONE; // New files are not links
 
     // Update directory
-    dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex; // Store block index
+    dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
     saveDirBlock(dirArray);
 
     // Update filesystem metadata
@@ -112,6 +127,7 @@ File *myOpen(char *fileName, short dirID)
 
     saveFileBlock(*newFile, fileIndex);
     saveSuperBlock(sb);
+    saveBBMP(bbmp);
 
     return newFile;
 }
@@ -257,6 +273,61 @@ int myRead(File *f, void *buffer, int nBytes)
         return -1;
     }
 
+    // Handle symbolic links
+    if (f->linkType == LINK_TYPE_SYMBOLIC) {
+        // For symbolic links, return the target path
+        if (strlen(f->targetPath) == 0) {
+            perror("Symbolic link has no target path");
+            return -1;
+        }
+        int targetLen = strlen(f->targetPath);
+        if (nBytes > targetLen) {
+            nBytes = targetLen;
+        }
+        strncpy(buffer, f->targetPath, nBytes);
+        // Ensure null termination if we're reading the entire string
+        if (nBytes >= targetLen) {
+            ((char*)buffer)[targetLen] = '\0';
+        }
+        return nBytes;
+    }
+
+    // Handle hard links
+    if (f->linkType == LINK_TYPE_HARD) {
+        // For hard links, we need to read from the target file
+        SuperBlock sb;
+        loadSuperBlock(&sb);
+        File fileArray[NUMBER_OF_BLOCK];
+        loadFileBlock(fileArray);
+        
+        // Find the target file by its block index
+        File *target = NULL;
+        int nbActualFiles = sb.totalFile - sb.nbFileDispo;
+        for (int i = 0; i < nbActualFiles; i++) {
+            if (fileArray[i].posInBlockBMP == f->targetFileIndex) {
+                target = &fileArray[i];
+                break;
+            }
+        }
+        
+        if (!target) {
+            perror("Target file not found for hard link");
+            return -1;
+        }
+        
+        // Create a temporary file structure for reading
+        File tempFile = *target;
+        tempFile.posSeek = f->posSeek; // Use the current seek position
+        
+        // Read from the target file
+        int result = myRead(&tempFile, buffer, nBytes);
+        if (result > 0) {
+            f->posSeek += result; // Update the link's position
+        }
+        return result;
+    }
+
+    // Regular file reading
     BlockBitmap bbmp;
     loadBlockBitmap(&bbmp);
     int currentIndex = indexBBMPOfPosSeekLoaded(f, bbmp);
@@ -298,41 +369,25 @@ int myRead(File *f, void *buffer, int nBytes)
             }
             else
             {
-                // si il nous reste 300 B à lire mais quon a encore beaucoup de size
-                if (toRead < BLOCK_SIZE)
-                {
-                    readB = toRead;
-                }
-                else
-                {
-                    // on a encore beaucoup a lire donc on lit un bloc disque
-                    readB = BLOCK_SIZE;
-                }
+                readB = toRead;
             }
         }
-        if ((read(fd, (char *)buffer + offset, readB)) == -1)
+        if (read(fd, (char *)buffer + offset, readB) == -1)
         {
             close(fd);
             perror("error read myRead");
             return -1;
         }
-
         offset += readB;
         toRead -= readB;
-
-        if (f->size - (f->posSeek + offset) <= 0 || toRead <= 0)
+        if (toRead <= 0 || offset >= f->size)
         {
             end = 1;
         }
         else
         {
-            // déplacement dans le prochain bloc
-            if (((f->posSeek + offset) % BLOCK_SIZE) == 0)
-            {
-                currentIndex = bbmp.bmpTab[currentIndex];
-            }
-
-            if ((lseek(fd, currentIndex * BLOCK_SIZE + DATABLOCK_OFFSET, SEEK_SET)) == -1)
+            currentIndex = bbmp.bmpTab[currentIndex];
+            if (lseek(fd, (currentIndex * BLOCK_SIZE) + DATABLOCK_OFFSET, SEEK_SET) == -1)
             {
                 close(fd);
                 perror("error seek myRead");
@@ -340,8 +395,8 @@ int myRead(File *f, void *buffer, int nBytes)
             }
         }
     }
-    f->posSeek = f->posSeek + offset;
     close(fd);
+    f->posSeek += offset;
     return offset;
 }
 
@@ -413,10 +468,12 @@ int myDelete(char *fileName)
     loadFileBlock(fileArray);
     BlockBitmap bbmp;
     loadBlockBitmap(&bbmp);
+    Directory dirArray[MAX_DIR_AMOUNT];
+    loadDirBlock(dirArray);
 
     int nbActu = sb.totalFile - sb.nbFileDispo;
     int i = 0;
-    // indice du tableau File
+    // Find the file to delete
     while (i < nbActu && strcmp(fileArray[i].nom, fileName) != 0)
     {
         i++;
@@ -427,17 +484,140 @@ int myDelete(char *fileName)
         perror("File not found");
         return -1;
     }
+
+    // Get the directory containing the file
+    Directory *parentDir = NULL;
+    for (int j = 0; j < MAX_DIR_AMOUNT; j++) {
+        if (dirArray[j].repoID == fileArray[i].parentIndex) {
+            parentDir = &dirArray[j];
+            break;
+        }
+    }
+    if (!parentDir) {
+        perror("Parent directory not found");
+        return -1;
+    }
+
+    // Handle symbolic links
+    if (fileArray[i].linkType == LINK_TYPE_SYMBOLIC) {
+        // For symbolic links, just free the link's data blocks
+        int currentIndex = fileArray[i].posInBlockBMP;
+        int next = bbmp.bmpTab[currentIndex];
+        
+        // Free the link's data blocks
+        while (next != USHRT_MAX)
+        {
+            bbmp.bmpTab[currentIndex] = 0;
+            currentIndex = next;
+            next = bbmp.bmpTab[currentIndex];
+            sb.nbBlockDispo++;
+        }
+        bbmp.bmpTab[currentIndex] = 0;
+        sb.nbBlockDispo++;
+        
+        // Remove the link entry
+        for (int j = i; j < nbActu - 1; j++)
+        {
+            fileArray[j] = fileArray[j + 1];
+        }
+        fileArray[nbActu - 1].nom[0] = '\0';
+        sb.nbFileDispo++;
+
+        // Remove from directory's file list
+        for (int j = 0; j < parentDir->nbFiles; j++) {
+            if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+                // Shift remaining entries
+                for (int k = j; k < parentDir->nbFiles - 1; k++) {
+                    parentDir->files[k] = parentDir->files[k + 1];
+                }
+                parentDir->nbFiles--;
+                break;
+            }
+        }
+        
+        // Save changes
+        saveSuperBlock(sb);
+        for (int j = i; j < nbActu; j++)
+        {
+            saveFileBlock(fileArray[j], j);
+        }
+        saveBBMP(bbmp);
+        saveDirBlock(dirArray);
+        return 0;
+    }
+
+    // Handle hard links
+    if (fileArray[i].linkType == LINK_TYPE_HARD) {
+        // Count remaining hard links to the target file
+        int linkCount = 0;
+        for (int j = 0; j < nbActu; j++) {
+            if (fileArray[j].linkType == LINK_TYPE_HARD && 
+                fileArray[j].targetFileIndex == fileArray[i].targetFileIndex) {
+                linkCount++;
+            }
+        }
+
+        // If this is the last hard link, free the data blocks
+        if (linkCount == 1) {
+            int currentIndex = fileArray[i].posInBlockBMP;
+            int next = bbmp.bmpTab[currentIndex];
+            
+            // Free the data blocks
+            while (next != USHRT_MAX)
+            {
+                bbmp.bmpTab[currentIndex] = 0;
+                currentIndex = next;
+                next = bbmp.bmpTab[currentIndex];
+                sb.nbBlockDispo++;
+            }
+            bbmp.bmpTab[currentIndex] = 0;
+            sb.nbBlockDispo++;
+        }
+        
+        // Remove the link entry
+        for (int j = i; j < nbActu - 1; j++)
+        {
+            fileArray[j] = fileArray[j + 1];
+        }
+        fileArray[nbActu - 1].nom[0] = '\0';
+        sb.nbFileDispo++;
+
+        // Remove from directory's file list
+        for (int j = 0; j < parentDir->nbFiles; j++) {
+            if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+                // Shift remaining entries
+                for (int k = j; k < parentDir->nbFiles - 1; k++) {
+                    parentDir->files[k] = parentDir->files[k + 1];
+                }
+                parentDir->nbFiles--;
+                break;
+            }
+        }
+        
+        // Save changes
+        saveSuperBlock(sb);
+        for (int j = i; j < nbActu; j++)
+        {
+            saveFileBlock(fileArray[j], j);
+        }
+        saveBBMP(bbmp);
+        saveDirBlock(dirArray);
+        return 0;
+    }
+
+    // Handle regular files
     sb.nbFileDispo++;
-    // Effacement virtuel, on efface juste notre liste et de la bitmap
     int currentIndex = fileArray[i].posInBlockBMP;
     int next = bbmp.bmpTab[currentIndex];
-    // echange (shift)
+    
+    // Remove the file entry
     for (int j = i; j < nbActu - 1; j++)
     {
         fileArray[j] = fileArray[j + 1];
     }
     fileArray[nbActu - 1].nom[0] = '\0';
-    // effacer dans le block bitmap
+    
+    // Free the data blocks
     while (next != USHRT_MAX)
     {
         bbmp.bmpTab[currentIndex] = 0;
@@ -447,13 +627,27 @@ int myDelete(char *fileName)
     }
     bbmp.bmpTab[currentIndex] = 0;
     sb.nbBlockDispo++;
-    // persistance des données
+
+    // Remove from directory's file list
+    for (int j = 0; j < parentDir->nbFiles; j++) {
+        if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+            // Shift remaining entries
+            for (int k = j; k < parentDir->nbFiles - 1; k++) {
+                parentDir->files[k] = parentDir->files[k + 1];
+            }
+            parentDir->nbFiles--;
+            break;
+        }
+    }
+    
+    // Save changes
     saveSuperBlock(sb);
     for (int j = i; j < nbActu; j++)
     {
         saveFileBlock(fileArray[j], j);
     }
     saveBBMP(bbmp);
+    saveDirBlock(dirArray);
     return 0;
 }
 
