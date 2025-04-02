@@ -510,7 +510,7 @@ void handleListFolderContents()
 
     // Count the number of folders
     int folderCount = 0;
-    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    for (int i = 1; i < MAX_DIR_AMOUNT; i++)
     {
         if (dirArray[i].parentID == currentDirectoryID && strcmp(dirArray[i].nomDossier, "") != 0)
         {
