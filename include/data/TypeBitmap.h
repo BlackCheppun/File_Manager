@@ -1,7 +1,5 @@
 /**
  * @file TypeBitmap.h
- * @author Farah ALIANE
- * @author Laurent LIN
  * @brief Définition de la structure blockbitmap
  */
 #ifndef TYPE_BITMAP_H

@@ -1,7 +1,5 @@
 /**
  * @file TypeFichier.h
- * @author Farah ALIANE
- * @author Laurent LIN
  * @brief Définition d'un fichier de notre partition
  */
 #ifndef TYPE_FICHIER_H
@@ -9,7 +7,7 @@
 #include "../util/constant.h"
 /**
  * @brief Un fichier est caractérisé par plusieurs informations :
- * Les 2 plus importantes sont : l'indice dans le tableau BlockBitmap 
+ * Les 2 plus importantes sont : l'indice dans le tableau BlockBitmap
  * et l'indice virtuel dans le fichier.
  */
 typedef struct TypeFichier
@@ -22,6 +20,10 @@ typedef struct TypeFichier
     unsigned short posInBlockBMP;
     /// @brief Indice virtuel pour l'écriture et lecture
     unsigned int posSeek;
+    /// @brief Indice du fichier dans le tableau de fichiers
+    unsigned short index;
+    /// @brief Indice du dossier parent
+    unsigned short parentIndex;
 } File;
 
 #endif
