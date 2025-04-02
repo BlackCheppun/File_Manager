@@ -31,6 +31,9 @@ void handleCreateFolder();
 void handleDeleteFolder();
 void handleRenameFolder();
 void handleListFolderContents();
+void handleCreateSymbolicLink();
+void handleCreateHardLink();
+void handleReadLink();
 
 int main(int argc, char **argv)
 {
@@ -80,8 +83,11 @@ void displayMenu()
         printf("8. Delete Directory\n");
         printf("9. Change Directory\n");
         printf("10. Format Partition\n");
-        printf("12. Visualize Partition\n");
-        printf("11. Exit\n");
+        printf("11. Create Symbolic Link\n");
+        printf("12. Create Hard Link\n");
+        printf("13. Read Symbolic Link\n");
+        printf("14. Visualize Partition\n");
+        printf("15. Exit\n");
         printf("Choice: ");
 
         scanf("%d", &choice);
@@ -119,15 +125,24 @@ void displayMenu()
             handleFormatPartition();
             break;
         case 11:
-            printf("Exiting...\n");
+            handleCreateSymbolicLink();
             break;
         case 12:
+            handleCreateHardLink();
+            break;
+        case 13:
+            handleReadLink();
+            break;
+        case 14:
             handleVisualizePartition();
             break;
+        case 15:
+            printf("Goodbye!\n");
+            break;
         default:
-            printf("Invalid choice! Please enter a number between 1 and 9.\n");
+            printf("Invalid choice. Please try again.\n");
         }
-    } while (choice != 11);
+    } while (choice != 15);
 }
 
 void handleCreateFile()
@@ -605,5 +620,55 @@ void handleChangeDirectory()
     }
 
     printf("Directory '%s' not found\n", targetDir);
+    pauseEnter();
+}
+
+void handleCreateSymbolicLink() {
+    char linkName[MAX_FILES_NAME_SIZE];
+    char targetPath[MAX_FILES_NAME_SIZE];
+    
+    printf("Enter the name for the symbolic link: ");
+    scanf("%s", linkName);
+    printf("Enter the target path: ");
+    scanf("%s", targetPath);
+    
+    if (myCreateSymbolicLink(linkName, targetPath, currentDirectoryID) == 0) {
+        printf("Symbolic link created successfully.\n");
+    } else {
+        printf("Failed to create symbolic link.\n");
+    }
+    pauseEnter();
+}
+
+void handleCreateHardLink() {
+    char linkName[MAX_FILES_NAME_SIZE];
+    char targetFile[MAX_FILES_NAME_SIZE];
+    
+    printf("Enter the name for the hard link: ");
+    scanf("%s", linkName);
+    printf("Enter the target file name: ");
+    scanf("%s", targetFile);
+    
+    if (myCreateHardLink(linkName, targetFile, currentDirectoryID) == 0) {
+        printf("Hard link created successfully.\n");
+    } else {
+        printf("Failed to create hard link.\n");
+    }
+    pauseEnter();
+}
+
+void handleReadLink() {
+    char linkName[MAX_FILES_NAME_SIZE];
+    
+    printf("Enter the name of the symbolic link to read: ");
+    scanf("%s", linkName);
+    
+    char* targetPath = myReadLink(linkName, currentDirectoryID);
+    if (targetPath != NULL) {
+        printf("Link points to: %s\n", targetPath);
+        free(targetPath);
+    } else {
+        printf("Failed to read link.\n");
+    }
     pauseEnter();
 }
