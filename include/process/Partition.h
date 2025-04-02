@@ -1,8 +1,5 @@
 /**
  * @file Partition.h
- * @author Farah ALIANE
- * @author Laurent LIN
- * @brief 
  */
 #ifndef PARTITION_H
 #define PARTITION_H
@@ -15,6 +12,6 @@
  * @param partitionName nom de la partition
  * @return int 0 en cas de réussite | -1 sinon
  */
-int myFormat(char* partitionName);
+int myFormat(char *partitionName);
 
 #endif
