@@ -9,7 +9,7 @@
 
 int myFormat(char *nomPartition)
 {
-    int fd = open(nomPartition, O_CREAT | O_RDWR, 0644);
+    int fd = open(nomPartition, O_CREAT | O_RDWR | O_TRUNC, 0644);
 
     if (fd == -1)
     {
