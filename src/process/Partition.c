@@ -114,15 +114,25 @@ int myFormat(char *nomPartition)
         }
     }
 
-    Directory rootDir;
-    strcpy(rootDir.nomDossier, "root");
-    rootDir.repoID = 0;
-    rootDir.parentID = 0;
-    rootDir.nbFiles = 0;
-    rootDir.nbSubRepos = 0;
+    Directory dirArray[MAX_DIR_AMOUNT] = {0};
+
+    Directory *rootDir = malloc(sizeof(Directory));
+    if (rootDir == NULL)
+    {
+        perror("erreur lors de l'init du Dir block");
+        close(fd);
+        return -1;
+    }
+    strcpy(rootDir->nomDossier, "root");
+    rootDir->repoID = 0;
+    rootDir->parentID = 0;
+    rootDir->nbFiles = 0;
+    rootDir->nbSubRepos = 0;
+
+    dirArray[0] = *rootDir;
 
     lseek(fd, DIRBLOCK_OFFSET, SEEK_SET);
-    nbWrite = write(fd, &rootDir, sizeof(Directory));
+    nbWrite = write(fd, dirArray, sizeof(dirArray));
     if (nbWrite <= 0)
     {
         perror("erreur lors de l'init du Dir block");

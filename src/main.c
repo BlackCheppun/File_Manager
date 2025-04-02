@@ -31,6 +31,7 @@ void handleCreateFolder();
 void handleDeleteFolder();
 void handleRenameFolder();
 void handleListFolderContents();
+// functions for link management
 void handleCreateSymbolicLink();
 void handleCreateHardLink();
 void handleReadLink();
@@ -110,7 +111,8 @@ void displayMenu()
             handleModifyFile();
             break;
         case 6:
-            handleListFolderContents();
+            // handleListFolderContents();
+            handleListFile();
             break;
         case 7:
             handleCreateFolder();

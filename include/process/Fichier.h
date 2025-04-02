@@ -118,8 +118,16 @@ int saveDirBlock(Directory *dirArray);
 int myClose(File *file);
 
 /**
+ * Creates a new directory in the filesystem.
+ * @param repoName   Name of the new directory
+ * @param parentID   ID of the parent directory (0 for root)
+ * @return          0 on success, -1 on failure
+ */
+int myCreateRepo(const char *repoName, unsigned short parentID);
+
+/**
  * @brief Creates a symbolic link from linkName to targetPath
- * 
+ *
  * @param linkName Name of the symbolic link to create
  * @param targetPath Path to the target file/directory
  * @param dirID ID of the directory where to create the link
@@ -129,7 +137,7 @@ int myCreateSymbolicLink(char *linkName, char *targetPath, short dirID);
 
 /**
  * @brief Creates a hard link from linkName to targetFile
- * 
+ *
  * @param linkName Name of the hard link to create
  * @param targetFile Name of the target file (hard links can only link to files)
  * @param dirID ID of the directory where to create the link
@@ -139,11 +147,11 @@ int myCreateHardLink(char *linkName, char *targetFile, short dirID);
 
 /**
  * @brief Resolves a symbolic link to get the actual target path
- * 
+ *
  * @param linkName Name of the symbolic link to resolve
  * @param dirID ID of the directory containing the link
  * @return char* Resolved path or NULL if error
  */
-char* myReadLink(char *linkName, short dirID);
+char *myReadLink(char *linkName, short dirID);
 
 #endif
