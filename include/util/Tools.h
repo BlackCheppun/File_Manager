@@ -80,6 +80,14 @@ int saveSuperBlock(SuperBlock sb);
  * @return int 0 en cas de réussite | -1 sinon
  */
 int saveFileBlock(File file, int index);
+
+/**
+ * Saves the directory array back to disk.
+ * @param dirArray   Array of directories to save
+ * @return           0 on success, -1 on failure
+ */
+int saveDirBlock(Directory *dirArray);
+
 /**
  * @brief Sauvegarde dans PARTITION_NAME l'information du Bitmap
  *
