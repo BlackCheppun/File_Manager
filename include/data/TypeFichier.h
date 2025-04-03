@@ -36,6 +36,8 @@ typedef struct TypeFichier
     char targetPath[MAX_FILES_NAME_SIZE];
     /// @brief Index du fichier cible pour les liens physiques
     unsigned short targetFileIndex;
+    /// @brief Permissions du fichier
+    unsigned short permissions;
 } File;
 
 #endif

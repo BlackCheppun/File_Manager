@@ -113,12 +113,16 @@
   *
   * @param array Tableau de fichier qu'on charge avec loadFileBlock
   */
- void printFILE(File array[]);
- /**
-  * @brief Affiche le contenu (et de ses enfants) de tous les dossiers disponibles
-  *
-  * @param array Tableau de dossier
-  */
+ void printFILE(File array[])
+ {
+     printf("FileBlock infos :\n");
+     for (int i = 0; i < NUMBER_OF_BLOCK; i++)
+     {
+         printf("\tF%d:\t", i);
+         printf("'%s', %uB, Index %u, Permissions %o\n", 
+                array[i].nom, array[i].size, array[i].posInBlockBMP, array[i].permissions);
+     }
+ }
  void printDIR(Directory array[]);
  /**
   * @brief Affiche les informations des enfants du dossier
