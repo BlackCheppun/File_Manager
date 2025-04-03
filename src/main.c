@@ -35,6 +35,296 @@ void handleCreateSymbolicLink();
 void handleCreateHardLink();
 void handleReadLink();
 
+#define MAX_COMMAND_LENGTH 256
+#define MAX_ARGS 10
+
+void parseCommand(char *command, char **args, int *argc) {
+    char *token = strtok(command, " \n");
+    *argc = 0;
+    
+    while (token != NULL && *argc < MAX_ARGS) {
+        args[*argc] = token;
+        (*argc)++;
+        token = strtok(NULL, " \n");
+    }
+}
+
+void executeCommand(char **args, int argc) {
+    if (argc == 0) return;
+    
+    if (strcmp(args[0], "help") == 0) {
+        printf("Available commands:\n");
+        printf("  create file <name> - Create a new file\n");
+        printf("  delete file <name> - Delete a file\n");
+        printf("  rename file <old> <new> - Rename a file\n");
+        printf("  read file <name> - Read file contents\n");
+        printf("  modify file <name> - Modify file contents\n");
+        printf("  ls - List directory contents\n");
+        printf("  mkdir <name> - Create a new directory\n");
+        printf("  rmdir <name> - Delete a directory\n");
+        printf("  cd <path> - Change directory\n");
+        printf("  format - Format the partition\n");
+        printf("  symlink <target> <link> - Create symbolic link\n");
+        printf("  hardlink <target> <link> - Create hard link\n");
+        printf("  readlink <link> - Read symbolic link\n");
+        printf("  visualize - Visualize partition\n");
+        printf("  exit - Exit the program\n");
+    }
+    else if (strcmp(args[0], "create") == 0 && strcmp(args[1], "file") == 0) {
+        if (argc < 3) {
+            printf("Usage: create file <name>\n");
+            return;
+        }
+        char *filename = args[2];
+        File *tmp = myOpen(filename, currentDirectoryID);
+        if (!tmp) {
+            printf("Failed to create file '%s' in directory '%d'\n", filename, currentDirectoryID);
+            return;
+        }
+        printf("File created successfully. Use 'modify file %s' to add content.\n", filename);
+        myClose(tmp);
+    }
+    else if (strcmp(args[0], "delete") == 0 && strcmp(args[1], "file") == 0) {
+        if (argc < 3) {
+            printf("Usage: delete file <name>\n");
+            return;
+        }
+        if (myDelete(args[2]) == -1) {
+            printf("Error when deleting file (does not exist or bad match), case sensitive\n");
+            return;
+        }
+        printf("Successfully deleted file: %s\n", args[2]);
+    }
+    else if (strcmp(args[0], "rename") == 0 && strcmp(args[1], "file") == 0) {
+        if (argc < 4) {
+            printf("Usage: rename file <old> <new>\n");
+            return;
+        }
+        if (myRename(args[2], args[3]) == -1) {
+            printf("Error when renaming file (does not exist or bad match), case sensitive\n");
+            return;
+        }
+        printf("Successfully renamed file from %s to %s\n", args[2], args[3]);
+    }
+    else if (strcmp(args[0], "read") == 0 && strcmp(args[1], "file") == 0) {
+        if (argc < 3) {
+            printf("Usage: read file <name>\n");
+            return;
+        }
+        File *tmp = myOpen(args[2], currentDirectoryID);
+        if (!tmp) {
+            printf("Failed to open file '%s'\n", args[2]);
+            return;
+        }
+        char *msg = (char *)malloc((1 + tmp->size) * sizeof(char));
+        int totalRead = myRead(tmp, msg, tmp->size);
+        if (totalRead == -1) {
+            free(msg);
+            myClose(tmp);
+            printf("Error when reading file\n");
+            return;
+        }
+        msg[totalRead] = '\0';
+        printf("%s\n", msg);
+        free(msg);
+        myClose(tmp);
+    }
+    else if (strcmp(args[0], "modify") == 0 && strcmp(args[1], "file") == 0) {
+        if (argc < 3) {
+            printf("Usage: modify file <name> <content>\n");
+            return;
+        }
+        File *tmp = myOpen(args[2], currentDirectoryID);
+        if (!tmp) {
+            printf("Failed to open file '%s'\n", args[2]);
+            return;
+        }
+        // Combine all remaining arguments as content
+        char content[2049] = "";
+        for (int i = 3; i < argc; i++) {
+            strcat(content, args[i]);
+            if (i < argc - 1) strcat(content, " ");
+        }
+        if (myWrite(tmp, content, strlen(content)) == -1) {
+            myClose(tmp);
+            printf("Error when writing to file\n");
+            return;
+        }
+        printf("Successfully modified file '%s'\n", args[2]);
+        myClose(tmp);
+    }
+    else if (strcmp(args[0], "ls") == 0) {
+        handleListFolderContents();
+    }
+    else if (strcmp(args[0], "mkdir") == 0) {
+        if (argc < 2) {
+            printf("Usage: mkdir <name>\n");
+            return;
+        }
+        if (myCreateRepo(args[1], currentDirectoryID) == -1) {
+            printf("Failed to create folder '%s'\n", args[1]);
+        } else {
+            printf("Folder '%s' created successfully\n", args[1]);
+        }
+    }
+    else if (strcmp(args[0], "rmdir") == 0) {
+        if (argc < 2) {
+            printf("Usage: rmdir <name>\n");
+            return;
+        }
+        if (myDeleteDir(args[1]) == -1) {
+            printf("Failed to delete folder '%s' (might not be empty or doesn't exist)\n", args[1]);
+        } else {
+            printf("Folder '%s' deleted successfully\n", args[1]);
+        }
+    }
+    else if (strcmp(args[0], "cd") == 0) {
+        if (argc < 2) {
+            printf("Usage: cd <path>\n");
+            return;
+        }
+        Directory dirArray[MAX_DIR_AMOUNT];
+        if (loadDirBlock(dirArray) == -1) {
+            printf("Failed to load directory information\n");
+            return;
+        }
+        
+        // Handle special cases
+        if (strcmp(args[1], "..") == 0) {
+            if (currentDirectoryID == 0) {
+                printf("Already at root directory\n");
+                return;
+            }
+            for (int i = 0; i < MAX_DIR_AMOUNT; i++) {
+                if (dirArray[i].repoID == currentDirectoryID) {
+                    currentDirectoryID = dirArray[i].parentID;
+                    printf("Changed to parent directory\n");
+                    return;
+                }
+            }
+        }
+        else if (strcmp(args[1], "/") == 0) {
+            currentDirectoryID = 0;
+            printf("Changed to root directory\n");
+            return;
+        }
+        
+        // Handle subdirectory navigation
+        for (int i = 0; i < MAX_DIR_AMOUNT; i++) {
+            if (dirArray[i].parentID == currentDirectoryID &&
+                strcmp(dirArray[i].nomDossier, args[1]) == 0) {
+                currentDirectoryID = dirArray[i].repoID;
+                printf("Changed to directory: %s\n", args[1]);
+                return;
+            }
+        }
+        
+        printf("Directory '%s' not found\n", args[1]);
+    }
+    else if (strcmp(args[0], "format") == 0) {
+        if (argc > 1 && (strcmp(args[1], "-y") == 0 || strcmp(args[1], "--yes") == 0)) {
+            if (myFormat(PARTITION_NAME) == -1) {
+                printf("Something went wrong when formatting, perhaps we didn't recognized our proprietary label, please delete manually.\n");
+                exit(1);
+            }
+            printf("Successfully formatted partition.\n");
+        } else {
+            printf("Warning: This will erase all files in %s\n", PARTITION_NAME);
+            printf("Use 'format -y' or 'format --yes' to confirm\n");
+        }
+    }
+    else if (strcmp(args[0], "symlink") == 0) {
+        if (argc < 3) {
+            printf("Usage: symlink <target> <link>\n");
+            return;
+        }
+        if (myCreateSymbolicLink(args[2], args[1], currentDirectoryID) == 0) {
+            printf("Symbolic link created successfully.\n");
+        } else {
+            printf("Failed to create symbolic link.\n");
+        }
+    }
+    else if (strcmp(args[0], "hardlink") == 0) {
+        if (argc < 3) {
+            printf("Usage: hardlink <target> <link>\n");
+            return;
+        }
+        if (myCreateHardLink(args[2], args[1], currentDirectoryID) == 0) {
+            printf("Hard link created successfully.\n");
+        } else {
+            printf("Failed to create hard link.\n");
+        }
+    }
+    else if (strcmp(args[0], "readlink") == 0) {
+        if (argc < 2) {
+            printf("Usage: readlink <link>\n");
+            return;
+        }
+        char* targetPath = myReadLink(args[1], currentDirectoryID);
+        if (targetPath != NULL) {
+            printf("Link points to: %s\n", targetPath);
+            free(targetPath);
+        } else {
+            printf("Failed to read link.\n");
+        }
+    }
+    else if (strcmp(args[0], "visualize") == 0) {
+        handleVisualizePartition();
+    }
+    else if (strcmp(args[0], "exit") == 0) {
+        exit(0);
+    }
+    else {
+        printf("Unknown command. Type 'help' for available commands.\n");
+    }
+}
+
+// Add this function before main
+void buildCurrentPath(char *path, Directory *dirArray) {
+    if (currentDirectoryID == 0) {
+        strcpy(path, "/");
+        return;
+    }
+
+    // Find the current directory
+    Directory *currentDir = NULL;
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++) {
+        if (dirArray[i].repoID == currentDirectoryID) {
+            currentDir = &dirArray[i];
+            break;
+        }
+    }
+
+    if (!currentDir) {
+        strcpy(path, "/");
+        return;
+    }
+
+    // Build path from root to current
+    char tempPath[MAX_FILES_NAME_SIZE * 10] = "";  // Increased size for longer paths
+    strcpy(tempPath, currentDir->nomDossier);
+    
+    // Add parent directories
+    short parentID = currentDir->parentID;
+    while (parentID != 0) {
+        for (int i = 0; i < MAX_DIR_AMOUNT; i++) {
+            if (dirArray[i].repoID == parentID) {
+                char temp[MAX_FILES_NAME_SIZE * 10] = "";
+                strcpy(temp, dirArray[i].nomDossier);
+                strcat(temp, "/");
+                strcat(temp, tempPath);
+                strcpy(tempPath, temp);
+                parentID = dirArray[i].parentID;
+                break;
+            }
+        }
+    }
+
+    // Add root prefix
+    strcpy(path, "/");
+    strcat(path, tempPath);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -50,8 +340,39 @@ int main(int argc, char **argv)
     }
 
     PARTITION_NAME = argv[1];
-    // Ask for format
-    displayMenu();
+    char command[MAX_COMMAND_LENGTH];
+    char *args[MAX_ARGS];
+    int argCount;
+    char currentPath[MAX_FILES_NAME_SIZE * 10] = "";  // Increased size for longer paths
+    Directory dirArray[MAX_DIR_AMOUNT];
+
+    printf("File Manager CLI (Working on: %s)\n", PARTITION_NAME);
+    printf("Type 'help' for available commands\n\n");
+
+    while (1) {
+        // Load directory information and build current path
+        if (loadDirBlock(dirArray) != -1) {
+            buildCurrentPath(currentPath, dirArray);
+        } else {
+            strcpy(currentPath, "/");
+        }
+
+        printf("filemanager %s%s> ", PARTITION_NAME, currentPath);
+        if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL) {
+            break;
+        }
+        
+        // Remove trailing newline
+        command[strcspn(command, "\n")] = 0;
+        
+        // Skip empty commands
+        if (strlen(command) == 0) {
+            continue;
+        }
+
+        parseCommand(command, args, &argCount);
+        executeCommand(args, argCount);
+    }
 
     return 0;
 }
@@ -147,7 +468,6 @@ void displayMenu()
 
 void handleCreateFile()
 {
-
     char buf[128] = "";
     char bigBuffer[2049] = "";
     File *tmp;
@@ -160,7 +480,6 @@ void handleCreateFile()
     {
         printf("Failed to create file '%s' in directory '%d'\n",
                buf, currentDirectoryID);
-        pauseEnter();
         return;
     }
 
@@ -174,7 +493,6 @@ void handleCreateFile()
         { // Safer input
             printf("Error reading input\n");
             myClose(tmp);
-            pauseEnter();
             return;
         }
 
@@ -187,14 +505,12 @@ void handleCreateFile()
         {
             printf("Error writing to file (possibly out of space)\n");
             myClose(tmp);
-            pauseEnter();
             return;
         }
     }
 
     printf("Successfully created '%s' in %d\n", tmp->nom, currentDirectoryID);
     myClose(tmp);
-    pauseEnter();
 }
 
 void handleDeleteFile()
@@ -296,7 +612,6 @@ void handleReadFile()
         free(msg);
     }
     free(tmp);
-    pauseEnter();
 }
 
 void handleModifyFile()
@@ -344,7 +659,6 @@ void handleModifyFile()
         }
     }
     free(tmp);
-    pauseEnter();
 }
 
 void handleListFile()
@@ -371,7 +685,6 @@ void handleListFile()
     if (!currentDir)
     {
         printf("Error: Current directory not found!\n");
-        pauseEnter();
         return;
     }
 
@@ -417,7 +730,6 @@ void handleListFile()
     }
 
     printf("--------------------------------\n");
-    pauseEnter();
 }
 
 void handleFormatPartition()
@@ -434,7 +746,6 @@ void handleFormatPartition()
         }
         printf("Successfully formated partition.\n");
     }
-    pauseEnter();
 }
 void handleVisualizePartition()
 {
@@ -465,18 +776,6 @@ void handleVisualizePartition()
         }
         printf("\n\t\tSize : %uB\n", array[i].size);
     }
-
-    pauseEnter();
-}
-
-void pauseEnter(void)
-{
-    printf("Press Enter to continue...");
-    fflush(stdout);
-    char enter;
-    scanf("%c", &enter);
-    while (getchar() != '\n')
-        ;
 }
 
 void handleCreateFolder()
@@ -493,7 +792,6 @@ void handleCreateFolder()
     {
         printf("Folder '%s' created successfully\n", folderName);
     }
-    pauseEnter();
 }
 
 void handleListFolderContents()
@@ -502,7 +800,6 @@ void handleListFolderContents()
     if (loadDirBlock(dirArray) == -1)
     {
         printf("Failed to load directory information\n");
-        pauseEnter();
         return;
     }
 
@@ -530,7 +827,6 @@ void handleListFolderContents()
     if (loadFileBlock(fileArray) == -1)
     {
         printf("Failed to load files information\n");
-        pauseEnter();
         return;
     }
 
@@ -543,7 +839,6 @@ void handleListFolderContents()
             fileCount++;
         }
     }
-    pauseEnter();
 }
 
 void handleDeleteFolder()
@@ -560,7 +855,6 @@ void handleDeleteFolder()
     {
         printf("Folder '%s' deleted successfully\n", folderName);
     }
-    pauseEnter();
 }
 
 /**
@@ -572,7 +866,6 @@ void handleChangeDirectory()
     if (loadDirBlock(dirArray) == -1)
     {
         printf("Failed to load directory information\n");
-        pauseEnter();
         return;
     }
 
@@ -602,7 +895,6 @@ void handleChangeDirectory()
                 }
             }
         }
-        pauseEnter();
         return;
     }
 
@@ -614,13 +906,11 @@ void handleChangeDirectory()
         {
             currentDirectoryID = dirArray[i].repoID;
             printf("Changed to directory: %s\n", targetDir);
-            pauseEnter();
             return;
         }
     }
 
     printf("Directory '%s' not found\n", targetDir);
-    pauseEnter();
 }
 
 void handleCreateSymbolicLink() {
@@ -637,7 +927,6 @@ void handleCreateSymbolicLink() {
     } else {
         printf("Failed to create symbolic link.\n");
     }
-    pauseEnter();
 }
 
 void handleCreateHardLink() {
@@ -654,7 +943,6 @@ void handleCreateHardLink() {
     } else {
         printf("Failed to create hard link.\n");
     }
-    pauseEnter();
 }
 
 void handleReadLink() {
@@ -670,5 +958,4 @@ void handleReadLink() {
     } else {
         printf("Failed to read link.\n");
     }
-    pauseEnter();
 }
