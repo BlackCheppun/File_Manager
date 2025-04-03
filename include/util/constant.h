@@ -88,4 +88,14 @@ extern char* PARTITION_NAME;
 /// Maximum name size for a file
 #define MAX_FILES_NAME_SIZE 64
 #endif 
+//Constantes pour les permissions
+#define PERM_OWNER_READ   0400
+#define PERM_OWNER_WRITE  0200
+#define PERM_OWNER_EXEC   0100
+#define PERM_GROUP_READ   0040
+#define PERM_GROUP_WRITE  0020
+#define PERM_GROUP_EXEC   0010
+#define PERM_OTHER_READ   0004
+#define PERM_OTHER_WRITE  0002
+#define PERM_OTHER_EXEC   0001
 

@@ -146,4 +146,13 @@ int myCreateHardLink(char *linkName, char *targetFile, short dirID);
  */
 char* myReadLink(char *linkName, short dirID);
 
+/**
+ * @brief Change les permissions d'un fichier
+ * 
+ * @param fileName Nom du fichier
+ * @param permissions Nouvelles permissions (style Unix)
+ * @param dirID ID du dossier parent
+ * @return int 0 en cas de succès, -1 en cas d'échec
+ */
+int myChmod(char *fileName, unsigned short permissions, short dirID);
 #endif

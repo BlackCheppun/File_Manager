@@ -35,6 +35,9 @@ void handleCreateSymbolicLink();
 void handleCreateHardLink();
 void handleReadLink();
 
+//function for permission
+void handleChmod();
+
 #define MAX_COMMAND_LENGTH 256
 #define MAX_ARGS 10
 
@@ -408,7 +411,7 @@ void displayMenu()
         printf("12. Create Hard Link\n");
         printf("13. Read Symbolic Link\n");
         printf("14. Visualize Partition\n");
-        printf("15. Exit\n");
+        printf("15. Change File Permissions (chmod)\n");        printf("16. Exit\n");
         printf("Choice: ");
 
         scanf("%d", &choice);
@@ -458,12 +461,15 @@ void displayMenu()
             handleVisualizePartition();
             break;
         case 15:
-            printf("Goodbye!\n");
+            handleChmod(); 
             break;
+        case 16:
+            printf("Goodbye!\n");
+        break;
         default:
             printf("Invalid choice. Please try again.\n");
         }
-    } while (choice != 15);
+    } while (choice != 16);
 }
 
 void handleCreateFile()
@@ -958,4 +964,32 @@ void handleReadLink() {
     } else {
         printf("Failed to read link.\n");
     }
+}
+
+
+// Ajoutez la fonction handleChmod
+void handleChmod() {
+    char fileName[MAX_FILES_NAME_SIZE];
+    unsigned short permissions;
+    char permStr[5];
+    
+    printf("Enter file name: ");
+    scanf(" %[^\n]", fileName);
+    
+    printf("Enter new permissions (e.g., 755, 644): ");
+    scanf(" %4s", permStr);
+    
+    // Convertir la chaîne de permissions en valeur numérique
+    if (sscanf(permStr, "%ho", &permissions) != 1) {
+        printf("Invalid permissions format. Use octal (e.g., 755)\n");
+        pauseEnter();
+        return;
+    }
+    
+    if (myChmod(fileName, permissions, currentDirectoryID) == -1) {        printf("Failed to change permissions for %s\n", fileName);
+    } else {
+        printf("Permissions for %s changed to %s\n", fileName, permStr);
+    }
+    
+    pauseEnter();
 }
