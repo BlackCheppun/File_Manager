@@ -117,7 +117,7 @@ File *myOpen(char *fileName, short dirID)
     newFile->posSeek = 0;
     newFile->parentIndex = dirID;
     newFile->linkType = LINK_TYPE_NONE; // New files are not links
-
+    newFile->permissions = 0644; // Permissions par défaut: rw-r--r--
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
     dirArray[dirIndex].nbFiles++;
@@ -958,5 +958,46 @@ int myClose(File *file)
 
     // Free the file memory
     free(file);
+    return 0;
+}
+// Fonction to change file permissions
+/**
+ * Changes the permissions of a file
+ * @param fileName Name of the file
+ * @param permissions New permissions (e.g., 0755)
+ * @param dirID Directory ID where the file is located
+ * @return 0 on success, -1 on failure
+ */
+int myChmod(char *fileName, unsigned short permissions, short dirID) {
+    // Charger les métadonnées nécessaires
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    File fileArray[NUMBER_OF_BLOCK];
+    loadFileBlock(fileArray);
+    
+    // Trouver le fichier
+    int fileIndex = -1;
+    int nbActualFiles = sb.totalFile - sb.nbFileDispo;
+    for (int i = 0; i < nbActualFiles; i++) {
+        if (strcmp(fileArray[i].nom, fileName) == 0 && fileArray[i].parentIndex == dirID) {
+            fileIndex = i;
+            break;
+        }
+    }
+    
+    if (fileIndex == -1) {
+        printf("File '%s' not found in directory %d\n", fileName, dirID);
+        return -1;
+    }
+    
+    // Mettre à jour les permissions
+    fileArray[fileIndex].permissions = permissions;
+    
+    // Sauvegarder les modifications
+    if (saveFileBlock(fileArray[fileIndex], fileIndex) == -1) {
+        printf("Failed to save file permissions\n");
+        return -1;
+    }
+    
     return 0;
 }
