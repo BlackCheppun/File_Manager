@@ -37,6 +37,10 @@ void handleChangeDirectory();
 // function for permission
 void handleChmod();
 
+// functions for backup and restore
+void handleBackupPartition();
+void handleRestorePartition(char *backup_name);
+
 #define MAX_COMMAND_LENGTH 256
 #define MAX_ARGS 10
 
@@ -61,14 +65,14 @@ void executeCommand(char **args, int argc)
     if (strcmp(args[0], "help") == 0)
     {
         printf("Available commands:\n");
-        printf("  create file <name> - Create a new file\n");
-        printf("  delete file <name> - Delete a file\n");
+        printf("  create file <n> - Create a new file\n");
+        printf("  delete file <n> - Delete a file\n");
         printf("  rename file <old> <new> - Rename a file\n");
-        printf("  read file <name> - Read file contents\n");
-        printf("  modify file <name> - Modify file contents\n");
+        printf("  read file <n> - Read file contents\n");
+        printf("  modify file <n> - Modify file contents\n");
         printf("  ls - List directory contents\n");
-        printf("  mkdir <name> - Create a new directory\n");
-        printf("  rmdir <name> - Delete a directory\n");
+        printf("  mkdir <n> - Create a new directory\n");
+        printf("  rmdir <n> - Delete a directory\n");
         printf("  cd <path> - Change directory\n");
         printf("  format - Format the partition\n");
         printf("  symlink <target> <link> - Create symbolic link\n");
@@ -76,6 +80,8 @@ void executeCommand(char **args, int argc)
         printf("  readlink <link> - Read symbolic link\n");
         printf("  visualize - Visualize partition\n");
         printf("  chmod <file> <permissions> - Change file permissions\n");
+        printf("  backup - Backup current partition\n");
+        printf("  restore <backup_name> - Restore from backup\n");
         printf("  exit - Exit the program\n");
     }
     else if (strcmp(args[0], "pwd") == 0)
@@ -367,6 +373,19 @@ void executeCommand(char **args, int argc)
     {
         handleVisualizePartition();
     }
+    else if (strcmp(args[0], "backup") == 0)
+    {
+        handleBackupPartition();
+    }
+    else if (strcmp(args[0], "restore") == 0)
+    {
+        if (argc < 2)
+        {
+            printf("Usage: restore <backup_name>\n");
+            return;
+        }
+        handleRestorePartition(args[1]);
+    }
     else if (strcmp(args[0], "exit") == 0)
     {
         exit(0);
@@ -436,7 +455,7 @@ int main(int argc, char **argv)
 {
     if (argc != 2)
     {
-        printf("Usage: fileManager [partitionName]\n");
+        printf("Usage: fileManager [partitionName].bin\n");
         printf("Try 'fileManager -h' for more information.\n");
         return 0;
     }
@@ -492,7 +511,7 @@ int main(int argc, char **argv)
 
 void showHelpMessage()
 {
-    printf("Usage: fileManager [partitionName]\n");
+    printf("Usage: fileManager [partitionName].bin\n");
     printf("Description:\n");
     printf("  This program is a simple file manager simulation.\n");
     printf("  It allows you to perform various operations on a virtual disk partition.\n\n");
@@ -968,4 +987,109 @@ void handleChmod()
     {
         printf("Permissions for %s changed to %s\n", fileName, permStr);
     }
+}
+
+void handleBackupPartition()
+{
+    // Get the original name without extension
+    char original_name[256];
+    char *dot_position;
+    strncpy(original_name, PARTITION_NAME, sizeof(original_name) - 1);
+    original_name[sizeof(original_name) - 1] = '\0';
+    
+    // Remove .bin extension if it exists
+    dot_position = strstr(original_name, ".bin");
+    if (dot_position != NULL) {
+        *dot_position = '\0';
+    }
+    
+    // Create backup name with new format
+    char backup_name[256];
+    snprintf(backup_name, sizeof(backup_name), "%s_backup.bin", original_name);
+    
+    // Open source file
+    FILE *source = fopen(PARTITION_NAME, "rb");
+    if (source == NULL)
+    {
+        printf("Error: Could not open source partition\n");
+        return;
+    }
+    
+    // Open destination file
+    FILE *dest = fopen(backup_name, "wb");
+    if (dest == NULL)
+    {
+        printf("Error: Could not create backup file\n");
+        fclose(source);
+        return;
+    }
+    
+    // Copy file content
+    char buffer[4096];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), source)) > 0)
+    {
+        fwrite(buffer, 1, bytes, dest);
+    }
+    
+    fclose(source);
+    fclose(dest);
+    printf("Backup created successfully: %s\n", backup_name);
+}
+
+void handleRestorePartition(char *backup_name)
+{
+    // Check if backup file exists
+    FILE *backup = fopen(backup_name, "rb");
+    if (backup == NULL)
+    {
+        printf("Error: Backup file does not exist\n");
+        return;
+    }
+    
+    // Close the backup file temporarily
+    fclose(backup);
+    
+    // Get confirmation from user
+    printf("Warning: This will overwrite the current partition. Continue? (y/n): ");
+    char response;
+    scanf(" %c", &response);
+    if (response != 'y' && response != 'Y')
+    {
+        printf("Restore cancelled\n");
+        return;
+    }
+    
+    // Reopen files for the actual restore
+    backup = fopen(backup_name, "rb");
+    FILE *dest = fopen(PARTITION_NAME, "wb");
+    
+    if (dest == NULL)
+    {
+        printf("Error: Could not open destination partition\n");
+        fclose(backup);
+        return;
+    }
+    
+    // Copy file content
+    char buffer[4096];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), backup)) > 0)
+    {
+        fwrite(buffer, 1, bytes, dest);
+    }
+    
+    fclose(backup);
+    fclose(dest);
+    printf("Partition restored successfully from %s\n", backup_name);
+    
+    // Reset current directory ID since we've restored a new partition
+    currentDirectoryID = 0;
+    
+    // Clear input buffer
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+    
+    // Force refresh of command prompt by returning immediately
+    return;
 }
