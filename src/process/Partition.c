@@ -28,21 +28,22 @@ int myFormat(char *nomPartition)
     // si different de 0 alors on check si il y a le tag 'ALS'
     if (fileSize > 0)
     {
-        // se positionner sur la bonne zone pour lire
-        if (lseek(fd, 14, SEEK_SET) == -1)
+        if (lseek(fd, 18, SEEK_SET) == -1)
         {
             perror("erreur seek myFormat");
             close(fd);
             return -1;
         }
-        char FSproperties[4] = "";
-        if (read(fd, FSproperties, 4) == -1)
+
+        char FSproperties[3] = {0};          // Initialise tout à 0
+        if (read(fd, FSproperties, 3) == -1) // Lire uniquement 3 caractères
         {
             perror("erreur read properties myFormat");
             close(fd);
             return -1;
         }
-        if (strcmp(FSproperties, "ALS") != 0)
+
+        if (strncmp(FSproperties, "ALS", 4) != 0)
         {
             perror("erreur le fichier n'appartient pas a ALS");
             close(fd);
@@ -86,7 +87,7 @@ int myFormat(char *nomPartition)
     };
     nbWrite = write(fd, partitionInfo, sizeof(partitionInfo));
     char *fs_proprietary = "ALS";
-    nbWrite = write(fd, fs_proprietary, sizeof(fs_proprietary));
+    nbWrite = write(fd, fs_proprietary, strlen(fs_proprietary)); // Écrit 3 bytes et pas un pointeur
 
     // BlockBitmap writing
     unsigned short zeroVal = 0;
@@ -113,15 +114,25 @@ int myFormat(char *nomPartition)
         }
     }
 
-    Directory rootDir;
-    strcpy(rootDir.nomDossier, "root");
-    rootDir.repoID = 0;
-    rootDir.parentID = 0;
-    rootDir.nbFiles = 0;
-    rootDir.nbSubRepos = 0;
+    Directory dirArray[MAX_DIR_AMOUNT] = {0};
+
+    Directory *rootDir = malloc(sizeof(Directory));
+    if (rootDir == NULL)
+    {
+        perror("erreur lors de l'init du Dir block");
+        close(fd);
+        return -1;
+    }
+    strcpy(rootDir->nomDossier, "root");
+    rootDir->repoID = 0;
+    rootDir->parentID = 0;
+    rootDir->nbFiles = 0;
+    rootDir->nbSubRepos = 0;
+
+    dirArray[0] = *rootDir;
 
     lseek(fd, DIRBLOCK_OFFSET, SEEK_SET);
-    nbWrite = write(fd, &rootDir, sizeof(Directory));
+    nbWrite = write(fd, dirArray, sizeof(dirArray));
     if (nbWrite <= 0)
     {
         perror("erreur lors de l'init du Dir block");

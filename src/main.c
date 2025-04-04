@@ -28,6 +28,7 @@ void handleCreateFolder();
 void handleDeleteFolder();
 void handleRenameFolder();
 void handleListFolderContents();
+// functions for link management
 void handleCreateSymbolicLink();
 void handleCreateHardLink();
 void handleReadLink();

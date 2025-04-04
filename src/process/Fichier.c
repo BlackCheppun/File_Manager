@@ -42,13 +42,15 @@ File *myOpen(char *fileName, short dirID)
     }
 
     // If file exists, handle it
-    if (foundFile) {
+    if (foundFile)
+    {
         // If it's a symbolic link, resolve it
-        if (foundFile->linkType == LINK_TYPE_SYMBOLIC) {
+        if (foundFile->linkType == LINK_TYPE_SYMBOLIC)
+        {
             // Recursively open the target file
             return myOpen(foundFile->targetPath, dirID);
         }
-        
+
         // For regular files and hard links, return a copy
         File *existing = malloc(sizeof(File));
         if (!existing)
@@ -118,6 +120,7 @@ File *myOpen(char *fileName, short dirID)
     newFile->permissions = 0644; // Permissions par défaut: rw-r--r--
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
+    dirArray[dirIndex].nbFiles++;
     saveDirBlock(dirArray);
 
     // Update filesystem metadata
@@ -274,54 +277,63 @@ int myRead(File *f, void *buffer, int nBytes)
     }
 
     // Handle symbolic links
-    if (f->linkType == LINK_TYPE_SYMBOLIC) {
+    if (f->linkType == LINK_TYPE_SYMBOLIC)
+    {
         // For symbolic links, return the target path
-        if (strlen(f->targetPath) == 0) {
+        if (strlen(f->targetPath) == 0)
+        {
             perror("Symbolic link has no target path");
             return -1;
         }
         int targetLen = strlen(f->targetPath);
-        if (nBytes > targetLen) {
+        if (nBytes > targetLen)
+        {
             nBytes = targetLen;
         }
         strncpy(buffer, f->targetPath, nBytes);
         // Ensure null termination if we're reading the entire string
-        if (nBytes >= targetLen) {
-            ((char*)buffer)[targetLen] = '\0';
+        if (nBytes >= targetLen)
+        {
+            ((char *)buffer)[targetLen] = '\0';
         }
         return nBytes;
     }
 
     // Handle hard links
-    if (f->linkType == LINK_TYPE_HARD) {
+    if (f->linkType == LINK_TYPE_HARD)
+    {
         // For hard links, we need to read from the target file
         SuperBlock sb;
         loadSuperBlock(&sb);
         File fileArray[NUMBER_OF_BLOCK];
         loadFileBlock(fileArray);
-        
+
         // Find the target file by its block index
         File *target = NULL;
         int nbActualFiles = sb.totalFile - sb.nbFileDispo;
-        for (int i = 0; i < nbActualFiles; i++) {
-            if (fileArray[i].posInBlockBMP == f->targetFileIndex) {
+        for (int i = 0; i < nbActualFiles; i++)
+        {
+            if (fileArray[i].posInBlockBMP == f->targetFileIndex)
+            {
                 target = &fileArray[i];
                 break;
             }
         }
-        
-        if (!target) {
+
+        if (!target)
+        {
             perror("Target file not found for hard link");
             return -1;
         }
-        
+
         // Create a temporary file structure for reading
         File tempFile = *target;
         tempFile.posSeek = f->posSeek; // Use the current seek position
-        
+
         // Read from the target file
         int result = myRead(&tempFile, buffer, nBytes);
-        if (result > 0) {
+        if (result > 0)
+        {
             f->posSeek += result; // Update the link's position
         }
         return result;
@@ -487,23 +499,27 @@ int myDelete(char *fileName)
 
     // Get the directory containing the file
     Directory *parentDir = NULL;
-    for (int j = 0; j < MAX_DIR_AMOUNT; j++) {
-        if (dirArray[j].repoID == fileArray[i].parentIndex) {
+    for (int j = 0; j < MAX_DIR_AMOUNT; j++)
+    {
+        if (dirArray[j].repoID == fileArray[i].parentIndex)
+        {
             parentDir = &dirArray[j];
             break;
         }
     }
-    if (!parentDir) {
+    if (!parentDir)
+    {
         perror("Parent directory not found");
         return -1;
     }
 
     // Handle symbolic links
-    if (fileArray[i].linkType == LINK_TYPE_SYMBOLIC) {
+    if (fileArray[i].linkType == LINK_TYPE_SYMBOLIC)
+    {
         // For symbolic links, just free the link's data blocks
         int currentIndex = fileArray[i].posInBlockBMP;
         int next = bbmp.bmpTab[currentIndex];
-        
+
         // Free the link's data blocks
         while (next != USHRT_MAX)
         {
@@ -514,7 +530,7 @@ int myDelete(char *fileName)
         }
         bbmp.bmpTab[currentIndex] = 0;
         sb.nbBlockDispo++;
-        
+
         // Remove the link entry
         for (int j = i; j < nbActu - 1; j++)
         {
@@ -524,17 +540,20 @@ int myDelete(char *fileName)
         sb.nbFileDispo++;
 
         // Remove from directory's file list
-        for (int j = 0; j < parentDir->nbFiles; j++) {
-            if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+        for (int j = 0; j < parentDir->nbFiles; j++)
+        {
+            if (parentDir->files[j] == fileArray[i].posInBlockBMP)
+            {
                 // Shift remaining entries
-                for (int k = j; k < parentDir->nbFiles - 1; k++) {
+                for (int k = j; k < parentDir->nbFiles - 1; k++)
+                {
                     parentDir->files[k] = parentDir->files[k + 1];
                 }
                 parentDir->nbFiles--;
                 break;
             }
         }
-        
+
         // Save changes
         saveSuperBlock(sb);
         for (int j = i; j < nbActu; j++)
@@ -547,21 +566,25 @@ int myDelete(char *fileName)
     }
 
     // Handle hard links
-    if (fileArray[i].linkType == LINK_TYPE_HARD) {
+    if (fileArray[i].linkType == LINK_TYPE_HARD)
+    {
         // Count remaining hard links to the target file
         int linkCount = 0;
-        for (int j = 0; j < nbActu; j++) {
-            if (fileArray[j].linkType == LINK_TYPE_HARD && 
-                fileArray[j].targetFileIndex == fileArray[i].targetFileIndex) {
+        for (int j = 0; j < nbActu; j++)
+        {
+            if (fileArray[j].linkType == LINK_TYPE_HARD &&
+                fileArray[j].targetFileIndex == fileArray[i].targetFileIndex)
+            {
                 linkCount++;
             }
         }
 
         // If this is the last hard link, free the data blocks
-        if (linkCount == 1) {
+        if (linkCount == 1)
+        {
             int currentIndex = fileArray[i].posInBlockBMP;
             int next = bbmp.bmpTab[currentIndex];
-            
+
             // Free the data blocks
             while (next != USHRT_MAX)
             {
@@ -573,7 +596,7 @@ int myDelete(char *fileName)
             bbmp.bmpTab[currentIndex] = 0;
             sb.nbBlockDispo++;
         }
-        
+
         // Remove the link entry
         for (int j = i; j < nbActu - 1; j++)
         {
@@ -583,17 +606,20 @@ int myDelete(char *fileName)
         sb.nbFileDispo++;
 
         // Remove from directory's file list
-        for (int j = 0; j < parentDir->nbFiles; j++) {
-            if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+        for (int j = 0; j < parentDir->nbFiles; j++)
+        {
+            if (parentDir->files[j] == fileArray[i].posInBlockBMP)
+            {
                 // Shift remaining entries
-                for (int k = j; k < parentDir->nbFiles - 1; k++) {
+                for (int k = j; k < parentDir->nbFiles - 1; k++)
+                {
                     parentDir->files[k] = parentDir->files[k + 1];
                 }
                 parentDir->nbFiles--;
                 break;
             }
         }
-        
+
         // Save changes
         saveSuperBlock(sb);
         for (int j = i; j < nbActu; j++)
@@ -609,14 +635,14 @@ int myDelete(char *fileName)
     sb.nbFileDispo++;
     int currentIndex = fileArray[i].posInBlockBMP;
     int next = bbmp.bmpTab[currentIndex];
-    
+
     // Remove the file entry
     for (int j = i; j < nbActu - 1; j++)
     {
         fileArray[j] = fileArray[j + 1];
     }
     fileArray[nbActu - 1].nom[0] = '\0';
-    
+
     // Free the data blocks
     while (next != USHRT_MAX)
     {
@@ -629,17 +655,20 @@ int myDelete(char *fileName)
     sb.nbBlockDispo++;
 
     // Remove from directory's file list
-    for (int j = 0; j < parentDir->nbFiles; j++) {
-        if (parentDir->files[j] == fileArray[i].posInBlockBMP) {
+    for (int j = 0; j < parentDir->nbFiles; j++)
+    {
+        if (parentDir->files[j] == fileArray[i].posInBlockBMP)
+        {
             // Shift remaining entries
-            for (int k = j; k < parentDir->nbFiles - 1; k++) {
+            for (int k = j; k < parentDir->nbFiles - 1; k++)
+            {
                 parentDir->files[k] = parentDir->files[k + 1];
             }
             parentDir->nbFiles--;
             break;
         }
     }
-    
+
     // Save changes
     saveSuperBlock(sb);
     for (int j = i; j < nbActu; j++)
@@ -696,12 +725,6 @@ int myRename(char *oldName, char *newName)
     return -1;
 }
 
-/**
- * Creates a new directory in the filesystem.
- * @param repoName   Name of the new directory
- * @param parentID   ID of the parent directory (0 for root)
- * @return          0 on success, -1 on failure
- */
 int myCreateRepo(const char *repoName, unsigned short parentID)
 {
     // 1. Load the SuperBlock to check directory limits
@@ -723,7 +746,7 @@ int myCreateRepo(const char *repoName, unsigned short parentID)
 
     // 3. Find an empty slot in dirArray
     int freeIndex = -1;
-    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    for (int i = 1; i < MAX_DIR_AMOUNT; i++)
     {
         if (dirArray[i].repoID == 0)
         {
@@ -739,23 +762,21 @@ int myCreateRepo(const char *repoName, unsigned short parentID)
     }
 
     // 4. Verify parent exists (if not root)
-    Directory *parentDir = &dirArray[parentID]; // Default to root
-    if (parentID != 0)
+    printf("Parent ID: %u\n", parentID);
+    Directory *parentDir = NULL; // Default to root
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
     {
-        int parentFound = 0;
-        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+        if (dirArray[i].repoID == parentID)
         {
-            if (dirArray[i].repoID == parentID)
-            {
-                parentDir = &dirArray[i];
-                break;
-            }
+            parentDir = &dirArray[i];
+            printf("Found parent directory: %s\n", parentDir->nomDossier);
+            break;
         }
-        if (!parentFound)
-        {
-            printf("Parent directory not found!\n");
-            return -1;
-        }
+    }
+    if (parentDir == NULL)
+    {
+        printf("Parent directory not found!\n");
+        return -1;
     }
 
     // 5. Initialize the new directory
@@ -768,24 +789,20 @@ int myCreateRepo(const char *repoName, unsigned short parentID)
     memset(newDir.files, 0, sizeof(newDir.files));
     memset(newDir.subRepos, 0, sizeof(newDir.subRepos));
 
-    // 6. Update parent directory (if not root)
-    if (parentID != 0)
+    if (parentDir->nbSubRepos >= MAX_DIR_AMOUNT)
     {
-        if (parentDir->nbSubRepos >= MAX_DIR_AMOUNT)
-        {
-            printf("Parent directory subfolder limit reached!\n");
-            return -1;
-        }
-        parentDir->subRepos[parentDir->nbSubRepos++] = newDir.repoID;
+        printf("Parent directory subfolder limit reached!\n");
+        return -1;
+    }
+    parentDir->subRepos[parentDir->nbSubRepos++] = newDir.repoID;
 
-        // CRITICAL: Update the parent in the dirArray
-        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    // CRITICAL: Update the parent in the dirArray
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    {
+        if (dirArray[i].repoID == parentID)
         {
-            if (dirArray[i].repoID == parentID)
-            {
-                dirArray[i] = *parentDir; // Update the array copy
-                break;
-            }
+            dirArray[i] = *parentDir; // Update the array copy
+            break;
         }
     }
 
