@@ -15,9 +15,7 @@
 
 char *PARTITION_NAME;
 short currentDirectoryID = 0;
-void pauseEnter();
 void showHelpMessage();
-void displayMenu();
 void handleCreateFile();
 void handleDeleteFile();
 void handleRenameFile();
@@ -467,84 +465,6 @@ void showHelpMessage()
     printf("Example:\n");
     printf("  fileManager maPartition.bin\n");
     printf("    Launch the program and open the specified partition to work on.\n\n");
-}
-
-void displayMenu()
-{
-    int choice;
-    do
-    {
-        printf("\nMenu: (working on : %s)\n", PARTITION_NAME);
-        printf("1. Create File\n");
-        printf("2. Delete File\n");
-        printf("3. Rename File\n");
-        printf("4. Read File\n");
-        printf("5. Modify File\n");
-        printf("6. List Directory Contents\n");
-        printf("7. Create Directory\n");
-        printf("8. Delete Directory\n");
-        printf("9. Change Directory\n");
-        printf("10. Format Partition\n");
-        printf("11. Create Symbolic Link\n");
-        printf("12. Create Hard Link\n");
-        printf("13. Read Symbolic Link\n");
-        printf("14. Visualize Partition\n");
-        printf("15. Exit\n");
-        printf("Choice: ");
-
-        scanf("%d", &choice);
-
-        switch (choice)
-        {
-        case 1:
-            handleCreateFile();
-            break;
-        case 2:
-            handleDeleteFile();
-            break;
-        case 3:
-            handleRenameFile();
-            break;
-        case 4:
-            handleReadFile();
-            break;
-        case 5:
-            handleModifyFile();
-            break;
-        case 6:
-            handleListFolderContents();
-            break;
-        case 7:
-            handleCreateFolder();
-            break;
-        case 8:
-            handleDeleteFolder();
-            break;
-        case 9:
-            handleChangeDirectory();
-            break;
-        case 10:
-            handleFormatPartition();
-            break;
-        case 11:
-            handleCreateSymbolicLink();
-            break;
-        case 12:
-            handleCreateHardLink();
-            break;
-        case 13:
-            handleReadLink();
-            break;
-        case 14:
-            handleVisualizePartition();
-            break;
-        case 15:
-            printf("Goodbye!\n");
-            break;
-        default:
-            printf("Invalid choice. Please try again.\n");
-        }
-    } while (choice != 15);
 }
 
 void handleCreateFile()
