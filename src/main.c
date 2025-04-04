@@ -34,7 +34,7 @@ void handleCreateHardLink();
 void handleReadLink();
 void handleChangeDirectory();
 
-//function for permission
+// function for permission
 void handleChmod();
 
 #define MAX_COMMAND_LENGTH 256
@@ -77,6 +77,10 @@ void executeCommand(char **args, int argc)
         printf("  visualize - Visualize partition\n");
         printf("  chmod <file> <permissions> - Change file permissions\n");
         printf("  exit - Exit the program\n");
+    }
+    else if (strcmp(args[0], "pwd") == 0)
+    {
+        printf("Current directory ID: %d\n", findParentDirID("/", currentDirectoryID));
     }
     else if (strcmp(args[0], "create") == 0 && strcmp(args[1], "file") == 0)
     {
@@ -269,20 +273,26 @@ void executeCommand(char **args, int argc)
 
         printf("Directory '%s' not found\n", args[1]);
     }
-    else if (strcmp(args[0], "chmod") == 0) {
-        if (argc < 3) {
+    else if (strcmp(args[0], "chmod") == 0)
+    {
+        if (argc < 3)
+        {
             printf("Usage: chmod <file> <permissions>\n");
             printf("Example: chmod myfile.txt 644\n");
             return;
         }
         unsigned short permissions;
-        if (sscanf(args[2], "%ho", &permissions) != 1) {
+        if (sscanf(args[2], "%ho", &permissions) != 1)
+        {
             printf("Invalid permissions format. Use octal (e.g., 755)\n");
             return;
         }
-        if (myChmod(args[1], permissions, currentDirectoryID) == -1) {
+        if (myChmod(args[1], permissions, currentDirectoryID) == -1)
+        {
             printf("Failed to change permissions for %s\n", args[1]);
-        } else {
+        }
+        else
+        {
             printf("Permissions for %s changed to %s\n", args[1], args[2]);
         }
     }
@@ -361,7 +371,7 @@ void executeCommand(char **args, int argc)
     {
         exit(0);
     }
-        
+
     else
     {
         printf("Unknown command. Type 'help' for available commands.\n");
@@ -489,87 +499,6 @@ void showHelpMessage()
     printf("Example:\n");
     printf("  fileManager maPartition.bin\n");
     printf("    Launch the program and open the specified partition to work on.\n\n");
-}
-
-void displayMenu()
-{
-    int choice;
-    do
-    {
-        printf("\nMenu: (working on : %s)\n", PARTITION_NAME);
-        printf("1. Create File\n");
-        printf("2. Delete File\n");
-        printf("3. Rename File\n");
-        printf("4. Read File\n");
-        printf("5. Modify File\n");
-        printf("6. List Directory Contents\n");
-        printf("7. Create Directory\n");
-        printf("8. Delete Directory\n");
-        printf("9. Change Directory\n");
-        printf("10. Format Partition\n");
-        printf("11. Create Symbolic Link\n");
-        printf("12. Create Hard Link\n");
-        printf("13. Read Symbolic Link\n");
-        printf("14. Visualize Partition\n");
-        printf("15. Change File Permissions (chmod)\n");        printf("16. Exit\n");
-        printf("Choice: ");
-
-        scanf("%d", &choice);
-
-        switch (choice)
-        {
-        case 1:
-            handleCreateFile();
-            break;
-        case 2:
-            handleDeleteFile();
-            break;
-        case 3:
-            handleRenameFile();
-            break;
-        case 4:
-            handleReadFile();
-            break;
-        case 5:
-            handleModifyFile();
-            break;
-        case 6:
-            handleListFolderContents();
-            break;
-        case 7:
-            handleCreateFolder();
-            break;
-        case 8:
-            handleDeleteFolder();
-            break;
-        case 9:
-            handleChangeDirectory();
-            break;
-        case 10:
-            handleFormatPartition();
-            break;
-        case 11:
-            handleCreateSymbolicLink();
-            break;
-        case 12:
-            handleCreateHardLink();
-            break;
-        case 13:
-            handleReadLink();
-            break;
-        case 14:
-            handleVisualizePartition();
-            break;
-        case 15:
-            handleChmod(); 
-            break;
-        case 16:
-            printf("Goodbye!\n");
-        break;
-        default:
-            printf("Invalid choice. Please try again.\n");
-        }
-    } while (choice != 16);
 }
 
 void handleCreateFile()
@@ -1012,27 +941,31 @@ void handleReadLink()
     }
 }
 
-
-void handleChmod() {
+void handleChmod()
+{
     char fileName[MAX_FILES_NAME_SIZE];
     char permStr[5];
     unsigned short permissions;
-    
+
     printf("Enter file name: ");
     scanf(" %[^\n]", fileName);
-    
+
     printf("Enter new permissions (e.g., 755, 644): ");
     scanf(" %4s", permStr);
-    
+
     // Convert permission string to numeric value
-    if (sscanf(permStr, "%ho", &permissions) != 1) {
+    if (sscanf(permStr, "%ho", &permissions) != 1)
+    {
         printf("Invalid permissions format. Use octal (e.g., 755)\n");
         return;
     }
-    
-    if (myChmod(fileName, permissions, currentDirectoryID) == -1) {
+
+    if (myChmod(fileName, permissions, currentDirectoryID) == -1)
+    {
         printf("Failed to change permissions for %s\n", fileName);
-    } else {
+    }
+    else
+    {
         printf("Permissions for %s changed to %s\n", fileName, permStr);
     }
 }
