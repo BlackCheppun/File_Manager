@@ -114,11 +114,7 @@
   * @param array Tableau de fichier qu'on charge avec loadFileBlock
   */
  void printFILE(File array[]);
- /**
-  * @brief Affiche le contenu (et de ses enfants) de tous les dossiers disponibles
-  *
-  * @param array Tableau de dossier
-  */
+ 
  void printDIR(Directory array[]);
  /**
   * @brief Affiche les informations des enfants du dossier
@@ -127,4 +123,8 @@
   * @param nbDirEnt nombre d'élement
   */
  void printDirEnt(DirectoryEntry array[], int nbDirEnt);
+
+
+int findDirIndex(unsigned short repoID, Directory *dirArray);
+
  #endif
