@@ -705,7 +705,41 @@ void executeCommand(char **args, int argc)
     {
         exit(0);
     }
+    else if (strcmp(args[0], "seek") == 0)
+    {
+        if (argc < 4)
+        {
+            printf("Usage: seek <filename> <offset> <start|current|end>\n");
+            return;
+        }
 
+        File *file = myOpen(args[1], currentDirectoryID);
+        if (!file)
+        {
+            printf("File '%s' not found\n", args[1]);
+            return;
+        }
+
+        int offset = atoi(args[2]);
+        int base;
+
+        if (strcmp(args[3], "start") == 0)
+            base = 0;
+        else if (strcmp(args[3], "current") == 0)
+            base = 1;
+        else if (strcmp(args[3], "end") == 0)
+            base = 2;
+        else
+        {
+            printf("Invalid base. Use: start|current|end\n");
+            myClose(file);
+            return;
+        }
+
+        mySeek(file, offset, base);
+        printf("New position: %u/%u\n", file->posSeek, file->size);
+        myClose(file);
+    }
     else
     {
         printf("Unknown command. Type 'help' for available commands.\n");
@@ -1320,17 +1354,18 @@ void handleBackupPartition()
     char *dot_position;
     strncpy(original_name, PARTITION_NAME, sizeof(original_name) - 1);
     original_name[sizeof(original_name) - 1] = '\0';
-    
+
     // Remove .bin extension if it exists
     dot_position = strstr(original_name, ".bin");
-    if (dot_position != NULL) {
+    if (dot_position != NULL)
+    {
         *dot_position = '\0';
     }
-    
+
     // Create backup name with new format
     char backup_name[256];
     snprintf(backup_name, sizeof(backup_name), "%s_backup.bin", original_name);
-    
+
     // Open source file
     FILE *source = fopen(PARTITION_NAME, "rb");
     if (source == NULL)
@@ -1338,7 +1373,7 @@ void handleBackupPartition()
         printf("Error: Could not open source partition\n");
         return;
     }
-    
+
     // Open destination file
     FILE *dest = fopen(backup_name, "wb");
     if (dest == NULL)
@@ -1347,7 +1382,7 @@ void handleBackupPartition()
         fclose(source);
         return;
     }
-    
+
     // Copy file content
     char buffer[4096];
     size_t bytes;
@@ -1355,7 +1390,7 @@ void handleBackupPartition()
     {
         fwrite(buffer, 1, bytes, dest);
     }
-    
+
     fclose(source);
     fclose(dest);
     printf("Backup created successfully: %s\n", backup_name);
@@ -1370,10 +1405,10 @@ void handleRestorePartition(char *backup_name)
         printf("Error: Backup file does not exist\n");
         return;
     }
-    
+
     // Close the backup file temporarily
     fclose(backup);
-    
+
     // Get confirmation from user
     printf("Warning: This will overwrite the current partition. Continue? (y/n): ");
     char response;
@@ -1383,18 +1418,18 @@ void handleRestorePartition(char *backup_name)
         printf("Restore cancelled\n");
         return;
     }
-    
+
     // Reopen files for the actual restore
     backup = fopen(backup_name, "rb");
     FILE *dest = fopen(PARTITION_NAME, "wb");
-    
+
     if (dest == NULL)
     {
         printf("Error: Could not open destination partition\n");
         fclose(backup);
         return;
     }
-    
+
     // Copy file content
     char buffer[4096];
     size_t bytes;
@@ -1402,18 +1437,19 @@ void handleRestorePartition(char *backup_name)
     {
         fwrite(buffer, 1, bytes, dest);
     }
-    
+
     fclose(backup);
     fclose(dest);
     printf("Partition restored successfully from %s\n", backup_name);
-    
+
     // Reset current directory ID since we've restored a new partition
     currentDirectoryID = 0;
-    
+
     // Clear input buffer
     int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-    
+    while ((c = getchar()) != '\n' && c != EOF)
+        ;
+
     // Force refresh of command prompt by returning immediately
     return;
 }
