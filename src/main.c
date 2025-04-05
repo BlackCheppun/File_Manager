@@ -608,7 +608,8 @@ void executeCommand(char **args, int argc)
             printf("Invalid permissions format. Use octal (e.g., 755)\n");
             return;
         }
-        if (myChmod(args[1], permissions, currentDirectoryID) == -1)
+        // Checking if permissions is in correct range && checking result of attempted perms change
+        if ((permissions > -1 && permissions < 800) && myChmod(args[1], permissions, currentDirectoryID) == -1)
         {
             printf("Failed to change permissions for %s\n", args[1]);
         }
@@ -1328,7 +1329,7 @@ void handleBackupPartition()
     }
     
     // Create backup name with new format
-    char backup_name[256];
+    char backup_name[267]; // 256 + 12 chr from '_backup.bin' text
     snprintf(backup_name, sizeof(backup_name), "%s_backup.bin", original_name);
     
     // Open source file

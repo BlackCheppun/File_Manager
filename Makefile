@@ -17,8 +17,9 @@ $(OUTPUT): $(SRCS) $(HEADER)
 docs:
 	doxygen Doxyfile
 
+c: clean
 
 clean:
 	rm -f $(OUTPUT)
 
-.PHONY: clean
+.PHONY: clean c
