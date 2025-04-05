@@ -17,7 +17,7 @@ File *myOpen(char *fileName, short dirID)
     // Validate filename length
     if (strlen(fileName) > MAX_FILES_NAME_SIZE)
     {
-        perror("Filename exceeds size limit");
+        printf("Filename exceeds size limit");
         return NULL;
     }
 
@@ -46,7 +46,7 @@ File *myOpen(char *fileName, short dirID)
     if (foundFile)
     {
         if(foundFile->permissions < 0400){
-            perror("Permissions denied.");
+            printf("Permissions denied.\n");
             return NULL;
         }
 
@@ -78,12 +78,12 @@ File *myOpen(char *fileName, short dirID)
     }
     if (dirIndex == -1)
     {
-        perror("Invalid directory ID");
+        printf("Invalid directory ID");
         return NULL;
     }
     if (dirArray[dirIndex].nbFiles >= MAX_ENTRIES_DIR)
     {
-        perror("Directory file limit reached");
+        printf("Directory file limit reached");
         return NULL;
     }
 
@@ -93,7 +93,7 @@ File *myOpen(char *fileName, short dirID)
     int freeIndex = indexOfFreeBBMP(bbmp);
     if (freeIndex == -1)
     {
-        perror("No free blocks available");
+        printf("No free blocks available");
         return NULL;
     }
 
@@ -102,7 +102,7 @@ File *myOpen(char *fileName, short dirID)
     int fd = open(PARTITION_NAME, O_RDWR);
     if (fd == -1)
     {
-        perror("Partition access error");
+        printf("Partition access error");
         return NULL;
     }
 
@@ -144,7 +144,7 @@ int myWrite(File *f, void *buffer, int nBytes)
 {
     printf("DEBUG: Attempting write to file %s with permissions %o\n", f->nom, f->permissions);
     if ((f->permissions & 0200) == 0) {
-        perror("Write permission denied");
+        printf("Write permission denied");
         return -1;
     }
 
@@ -177,7 +177,7 @@ int myWrite(File *f, void *buffer, int nBytes)
     // calcul de bloc dispo
     if (sb.nbBlockDispo < nbBlocNeed)
     {
-        perror("Not enough block myWrite");
+        printf("Not enough block myWrite");
         return -1;
     }
     sb.nbBlockDispo = sb.nbBlockDispo - nbBlocNeed;
@@ -191,7 +191,7 @@ int myWrite(File *f, void *buffer, int nBytes)
     int fd = open(PARTITION_NAME, O_RDWR);
     if (fd == -1)
     {
-        perror("couldn't open partition myWrite");
+        printf("couldn't open partition myWrite");
         return -1;
     }
     int offset = 0, written, nbWrite, iFreeBlock;
@@ -199,7 +199,7 @@ int myWrite(File *f, void *buffer, int nBytes)
     if (lseek(fd, (currentIndex * BLOCK_SIZE) + DATABLOCK_OFFSET + f->posSeek % BLOCK_SIZE, SEEK_SET) == -1)
     {
         close(fd);
-        perror("error initial seek myWrite");
+        printf("error initial seek myWrite");
         return -1;
     }
 
@@ -233,7 +233,7 @@ int myWrite(File *f, void *buffer, int nBytes)
         if ((nbWrite = write(fd, (char *)(buffer) + offset, written)) == -1)
         {
             close(fd);
-            perror("error write myWrite");
+            printf("error write myWrite");
             return -1;
         }
         toWrite -= nbWrite;
@@ -247,7 +247,7 @@ int myWrite(File *f, void *buffer, int nBytes)
         if (lseek(fd, (currentIndex * BLOCK_SIZE) + DATABLOCK_OFFSET, SEEK_SET) == -1)
         {
             close(fd);
-            perror("error seek myWrite");
+            printf("error seek myWrite");
             return -1;
         }
     }
@@ -283,13 +283,13 @@ int myRead(File *f, void *buffer, int nBytes)
 {
     // Check read permissions
     if ((f->permissions & 0400) == 0) { // Check if read bit is set for owner
-        perror("Read permission denied");
+        printf("Read permission denied");
         return -1;
     }
 
     if (nBytes < 0)
     {
-        perror("Cannot read negative value");
+        printf("Cannot read negative value");
         return -1;
     }
 
@@ -299,7 +299,7 @@ int myRead(File *f, void *buffer, int nBytes)
         // For symbolic links, return the target path
         if (strlen(f->targetPath) == 0)
         {
-            perror("Symbolic link has no target path");
+            printf("Symbolic link has no target path");
             return -1;
         }
         int targetLen = strlen(f->targetPath);
@@ -339,13 +339,13 @@ int myRead(File *f, void *buffer, int nBytes)
 
         if (!target)
         {
-            perror("Target file not found for hard link");
+            printf("Target file not found for hard link");
             return -1;
         }
 
         // Check target file read permissions
         if ((target->permissions & 0400) == 0) {
-            perror("Read permission denied for target file");
+            printf("Read permission denied for target file");
             return -1;
         }
 
@@ -371,14 +371,14 @@ int myRead(File *f, void *buffer, int nBytes)
     int fd = open(PARTITION_NAME, O_RDONLY);
     if (fd == -1)
     {
-        perror("couldn't open partition myRead");
+        printf("couldn't open partition myRead");
         return -1;
     }
     // Comme pour read() on lit à partir de la posSeek
     if (lseek(fd, (currentIndex * BLOCK_SIZE) + DATABLOCK_OFFSET + f->posSeek % BLOCK_SIZE, SEEK_SET) == -1)
     {
         close(fd);
-        perror("error initial seek myRead");
+        printf("error initial seek myRead");
         return -1;
     }
 
@@ -410,7 +410,7 @@ int myRead(File *f, void *buffer, int nBytes)
         if (read(fd, (char *)buffer + offset, readB) == -1)
         {
             close(fd);
-            perror("error read myRead");
+            printf("error read myRead");
             return -1;
         }
         offset += readB;
@@ -425,7 +425,7 @@ int myRead(File *f, void *buffer, int nBytes)
             if (lseek(fd, (currentIndex * BLOCK_SIZE) + DATABLOCK_OFFSET, SEEK_SET) == -1)
             {
                 close(fd);
-                perror("error seek myRead");
+                printf("error seek myRead");
                 return -1;
             }
         }
@@ -443,12 +443,12 @@ void mySeek(File *f, int offset, int base)
     case MYSEEK_START:
         if (offset < 0)
         {
-            perror("seek negative from start mySeek");
+            printf("seek negative from start mySeek");
             break;
         }
         if (offset > sizeFile)
         {
-            perror("seek outofbound from start mySeek");
+            printf("seek outofbound from start mySeek");
             break;
         }
         f->posSeek = offset;
@@ -456,7 +456,7 @@ void mySeek(File *f, int offset, int base)
     case MYSEEK_CUR:
         if ((currentPos + offset) < 0)
         {
-            perror("seek outofbound from current mySeek");
+            printf("seek outofbound from current mySeek");
             break;
         }
 
@@ -478,18 +478,18 @@ void mySeek(File *f, int offset, int base)
     case MYSEEK_END:
         if (offset < 0)
         {
-            perror("seek negative from end mySeek");
+            printf("seek negative from end mySeek");
             break;
         }
         if (offset > sizeFile)
         {
-            perror("seek outofbound from end mySeek");
+            printf("seek outofbound from end mySeek");
             break;
         }
         f->posSeek = sizeFile - offset;
         break;
     default:
-        perror("Unknown base mySeek");
+        printf("Unknown base mySeek");
         return;
     }
 }
@@ -519,7 +519,7 @@ int myDelete(char *fileName, int dirID)
 
     if (fileIndex == -1)
     {
-        perror("File not found");
+        printf("File not found");
         return -1;
     }
 
@@ -537,7 +537,7 @@ int myDelete(char *fileName, int dirID)
 
     if (!parentDir)
     {
-        perror("Parent directory not found");
+        printf("Parent directory not found");
         return -1;
     }
 
@@ -656,7 +656,7 @@ int myRename(char *oldName, char *newName)
 {
     if (strlen(newName) > MAX_FILES_NAME_SIZE)
     {
-        perror("New name exceeded size limit myRename");
+        printf("New name exceeded size limit myRename");
         return -1;
     }
     SuperBlock sb;
@@ -683,7 +683,7 @@ int myRename(char *oldName, char *newName)
         saveFileBlock(tmp, i);
         return 0;
     }
-    perror("File not found myRename");
+    printf("File not found myRename");
     return -1;
 }
 
@@ -794,7 +794,7 @@ int myDeleteDir(const char *dirname, short parentID)
     Directory dirArray[MAX_DIR_AMOUNT];
     if (loadDirBlock(dirArray) == -1)
     {
-        perror("Failed to load directory block");
+        printf("Failed to load directory block");
         return -1;
     }
 
@@ -871,7 +871,7 @@ int myDeleteDir(const char *dirname, short parentID)
     // Save directory changes
     if (saveDirBlock(dirArray) == -1)
     {
-        perror("Failed to save directory block");
+        printf("Failed to save directory block");
         return -1;
     }
 
@@ -972,7 +972,7 @@ int findParentDirID(const char *path, short curIdex)
     Directory dirArray[MAX_DIR_AMOUNT];
     if (loadDirBlock(dirArray) == -1)
     {
-        perror("Failed to load directory block");
+        printf("Failed to load directory block");
         return -1;
     }
 

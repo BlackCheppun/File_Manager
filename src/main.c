@@ -253,7 +253,7 @@ void executeCommand(char **args, int argc)
         }
 
         File *tmp = myOpen(filename, parentDirID);
-        free(path);
+        //free(path);
 
         if (!tmp)
         {
@@ -320,7 +320,7 @@ void executeCommand(char **args, int argc)
         }
 
         File *tmp = myOpen(filename, parentDirID);
-        free(path);
+        //free(path);
 
         if (!tmp)
         {
@@ -483,7 +483,7 @@ void executeCommand(char **args, int argc)
 
         // Delete the directory
         int result = myDeleteDir(dirname, parentDirID);
-        free(path);
+        //free(path);
 
         if (result == -1)
         {
@@ -583,7 +583,7 @@ void executeCommand(char **args, int argc)
             }
         }
 
-        free(path);
+        //free(path);
 
         if (!found)
         {
