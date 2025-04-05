@@ -1,6 +1,7 @@
 /**
  * @file Fichier.h
  * @brief Permet la manipulation de File
+ * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
  */
 #ifndef FICHIER_H
 #define FICHIER_H

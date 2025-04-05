@@ -1,32 +1,51 @@
 /**
  * @file TypeSuperBloc.h
- * @brief Le SuperBloc contient les informations vitales sur la partition mais
- * aucune informations sur le contenu de la partition
+ * @brief Définition de la structure du super-bloc
+ * @author Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * 
+ * Ce fichier contient la définition du super-bloc qui maintient les informations
+ * vitales sur la partition. Le super-bloc est la structure principale qui permet
+ * de gérer l'organisation du système de fichiers, en gardant trace des ressources
+ * disponibles et des limites du système.
  */
 #ifndef TYPE_SUPERBLOC_H
 #define TYPE_SUPERBLOC_H
+
 /**
- * @brief Contient l'ensemble des informations de la partition
+ * @brief Structure du super-bloc contenant les métadonnées de la partition
+ * 
+ * Le super-bloc est la structure principale qui contient toutes les informations
+ * essentielles sur l'organisation et l'état de la partition. Il maintient les
+ * compteurs de ressources (blocs, fichiers, dossiers) et leurs limites.
  */
 typedef struct sb
 {
-    /// @brief Nombre total de bloc
+    /// @brief Nombre total de blocs dans la partition
     unsigned short totalBlock;
-    /// @brief Taille d'un bloc
+    
+    /// @brief Taille d'un bloc en octets
     unsigned short tailleBlock;
-    /// @brief Nombre de bloc disponible par rapport au nombre total
+    
+    /// @brief Nombre de blocs actuellement disponibles
     unsigned short nbBlockDispo;
-    /// @brief Nombre total de fichier possible par rapport au nombre de bloc
+    
+    /// @brief Nombre maximum de fichiers supportés par la partition
     unsigned short totalFile;
-    /// @brief Nombre restant de fichier créable
+    
+    /// @brief Nombre de fichiers pouvant encore être créés
     unsigned short nbFileDispo;
-    /// @brief Nombre total de dossier possible par rapport au bloc Dossier
+    
+    /// @brief Nombre maximum de dossiers supportés par la partition
     unsigned short totalDirectory;
-    /// @brief Nombre restant de dossier créable
+    
+    /// @brief Nombre de dossiers pouvant encore être créés
     unsigned short nbDirectoryDispo;
-    /// @brief id of root dir
+    
+    /// @brief Identifiant du dossier racine
     unsigned short rootID;
-    /// @brief Marqueur de propriété (pour éviter de casser d'autre fichier)
+    
+    /// @brief Signature du système de fichiers (pour validation)
+    /// @details Contient une chaîne de 4 caractères identifiant le type de système de fichiers
     char fs_name[4];
 } SuperBlock;
 

@@ -1,5 +1,6 @@
 /**
  * @file Partition.h
+ * @author Massin KHELOUFI (100%)
  */
 #ifndef PARTITION_H
 #define PARTITION_H
