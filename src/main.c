@@ -65,19 +65,20 @@ void executeCommand(char **args, int argc)
     if (strcmp(args[0], "help") == 0)
     {
         printf("Available commands:\n");
-        printf("  create file <n> - Create a new file\n");
-        printf("  delete file <n> - Delete a file\n");
+        printf("  create file <name> - Create a new file\n");
+        printf("  delete file <name> - Delete a file\n");
         printf("  rename file <old> <new> - Rename a file\n");
-        printf("  read file <n> - Read file contents\n");
-        printf("  modify file <n> - Modify file contents\n");
+        printf("  read file <name> - Read file contents\n");
+        printf("  modify file <name> <content> - Modify file contents\n");
         printf("  ls - List directory contents\n");
-        printf("  mkdir <n> - Create a new directory\n");
-        printf("  rmdir <n> - Delete a directory\n");
+        printf("  pwd - Show current path\n");
+        printf("  mkdir <name> - Create a new directory\n");
+        printf("  rmdir <name> - Delete a directory\n");
         printf("  cd <path> - Change directory\n");
         printf("  format - Format the partition\n");
-        printf("  symlink <target> <link> - Create symbolic link\n");
-        printf("  hardlink <target> <link> - Create hard link\n");
-        printf("  readlink <link> - Read symbolic link\n");
+        printf("  symlink <target> <name_of_link> - Create symbolic link\n");
+        printf("  hardlink <target> <name_of_link> - Create hard link\n");
+        printf("  readlink <name_of_link> - Read symbolic link\n");
         printf("  visualize - Visualize partition\n");
         printf("  chmod <file> <permissions> - Change file permissions\n");
         printf("  backup - Backup current partition\n");
