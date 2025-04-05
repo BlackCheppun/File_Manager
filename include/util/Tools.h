@@ -1,7 +1,7 @@
 /**
  * @file Tools.h
  * @brief Fonctions utilitaires pour la gestion du système de fichiers
- * @author Massin KHELOUFI (30%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (30%) & Ilyes AGHOUILES (40%) & Imane ABDELBASSIR (30%)
  * 
  * Ce fichier contient l'ensemble des fonctions utilitaires nécessaires pour
  * manipuler les structures de données du système de fichiers, incluant :

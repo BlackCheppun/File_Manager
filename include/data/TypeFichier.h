@@ -1,7 +1,7 @@
 /**
  * @file TypeFichier.h
  * @brief Définition de la structure des fichiers
- * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES (30%) & Imane ABDELBASSIR (30%)
  * 
  * Ce fichier contient la définition de la structure File qui représente
  * un fichier dans le système de fichiers. Il gère également les différents

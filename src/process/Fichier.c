@@ -1,7 +1,7 @@
 /**
  * @file Fichier.c
  * @brief Implémentation des fonctions de manipulation des fichiers
- * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (35%) & Ilyes AGHOUILES (30%) & Imane ABDELBASSIR ( )
  * 
  * Ce fichier contient l'implémentation des fonctions principales du système de fichiers,
  * permettant de manipuler les fichiers et répertoires :

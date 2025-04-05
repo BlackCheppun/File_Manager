@@ -1,7 +1,7 @@
 /**
  * @file Partition.c
  * @brief Implémentation des fonctions de gestion de la partition
- * @author Massin KHELOUFI (40%) Ilyes AGHOUILES ( ) Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (30%) Ilyes AGHOUILES (40%) Imane ABDELBASSIR ( )
  * 
  * Ce fichier contient l'implémentation des fonctions permettant de gérer
  * la partition virtuelle du système de fichiers, notamment :

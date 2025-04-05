@@ -1,7 +1,7 @@
 /**
  * @file TypeSuperBloc.h
  * @brief Définition de la structure du super-bloc
- * @author Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Ilyes AGHOUILES (50%) & Imane ABDELBASSIR (50%)
  * 
  * Ce fichier contient la définition du super-bloc qui maintient les informations
  * vitales sur la partition. Le super-bloc est la structure principale qui permet

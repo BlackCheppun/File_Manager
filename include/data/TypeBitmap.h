@@ -1,7 +1,7 @@
 /**
  * @file TypeBitmap.h
  * @brief Définition de la structure de la bitmap des blocs
- * @author Massin KHELOUFI (30%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (30%) & Ilyes AGHOUILES (30%) & Imane ABDELBASSIR (50%)
  * 
  * Ce fichier contient la définition de la structure BlockBitmap qui permet
  * de gérer l'allocation des blocs dans le système de fichiers. La bitmap

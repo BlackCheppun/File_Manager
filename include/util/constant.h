@@ -1,7 +1,7 @@
 /**
  * @file constant.h
  * @brief Définition des constantes du système de fichiers
- * @author Massin KHELOUFI (20%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (20%) & Ilyes AGHOUILES (20%) & Imane ABDELBASSIR (60%)
  * 
  * Ce fichier contient toutes les constantes qui définissent les paramètres
  * du système de fichiers, incluant les tailles des blocs, les offsets des
