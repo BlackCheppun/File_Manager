@@ -44,7 +44,10 @@ File *myOpen(char *fileName, short dirID)
     // If file exists, handle it
     if (foundFile)
     {
-             
+        if(foundFile->permissions < 0400){
+            perror("Permissions denied.");
+            return NULL;
+        }
 
         // If it's a symbolic link, resolve it
         if (foundFile->linkType == LINK_TYPE_SYMBOLIC)
