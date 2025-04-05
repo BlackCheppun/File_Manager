@@ -15,9 +15,9 @@
 
 char *PARTITION_NAME;
 short currentDirectoryID = 0;
+char currentPath[MAX_FILES_NAME_SIZE * 10] = "";
 void showHelpMessage();
 void handleCreateFile();
-void handleDeleteFile();
 void handleRenameFile();
 void handleReadFile();
 void handleModifyFile();
@@ -27,7 +27,7 @@ void handleVisualizePartition();
 void handleCreateFolder();
 void handleDeleteFolder();
 void handleRenameFolder();
-void handleListFolderContents();
+void handleListFolderContents(const char *path);
 // functions for link management
 void handleCreateSymbolicLink();
 void handleCreateHardLink();
@@ -86,7 +86,7 @@ void executeCommand(char **args, int argc)
     }
     else if (strcmp(args[0], "pwd") == 0)
     {
-        printf("Current directory ID: %d\n", findParentDirID("/", currentDirectoryID));
+        printf("Current path: %s\n", currentPath);
     }
     else if (strcmp(args[0], "create") == 0 && strcmp(args[1], "file") == 0)
     {
@@ -95,11 +95,58 @@ void executeCommand(char **args, int argc)
             printf("Usage: create file <name>\n");
             return;
         }
-        char *filename = args[2];
-        File *tmp = myOpen(filename, currentDirectoryID);
+
+        const char *fullpath = args[2];
+        char *pathCopy = strdup(fullpath);
+        if (!pathCopy)
+        {
+            perror("memorry allocation error");
+            return;
+        }
+
+        // extract the filename
+        char *lashSlash = strrchr(pathCopy, '/');
+        char *filename = NULL;
+        int parentid;
+        if (lashSlash)
+        {
+            *lashSlash = '\0';
+            filename = strdup(lashSlash + 1);
+            if (strlen(pathCopy) == 0)
+            {
+                // if the path is empty, set it to the current directory
+                parentid = currentDirectoryID;
+            }
+            else
+            {
+                // find the parent directory ID
+                parentid = findParentDirID(pathCopy, currentDirectoryID);
+                if (parentid == -1)
+                {
+                    printf("Error: Parent directory not found\n");
+                    free(pathCopy);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            filename = strdup(pathCopy);
+            parentid = currentDirectoryID;
+        }
+
+        free(pathCopy);
+
+        if (parentid == -1)
+        {
+            printf("Invalid path. Could not find parent folder.\n");
+            return;
+        }
+
+        File *tmp = myOpen(filename, parentid);
         if (!tmp)
         {
-            printf("Failed to create file '%s' in directory '%d'\n", filename, currentDirectoryID);
+            printf("Failed to create file '%s' in directory '%d'\n", filename, parentid);
             return;
         }
         printf("File created successfully. Use 'modify file %s' to add content.\n", filename);
@@ -109,14 +156,43 @@ void executeCommand(char **args, int argc)
     {
         if (argc < 3)
         {
-            printf("Usage: delete file <name>\n");
+            printf("Usage: delete file <path/to/filename or filename>\n");
             return;
         }
-        if (myDelete(args[2]) == -1)
+
+        char *fullPath = args[2];
+        char pathCopy[strlen(fullPath) + 1];
+        strcpy(pathCopy, fullPath);
+
+        char *filename = strrchr(pathCopy, '/');
+
+        int parentID;
+        if (filename == NULL)
+        {
+            // No slash: filename in current directory
+            filename = fullPath;
+            parentID = currentDirectoryID;
+        }
+        else
+        {
+            // There is a path: separate parent path and filename
+            *filename = '\0'; // Cut pathCopy to get parent path
+            filename++;       // Move to filename part
+            parentID = findParentDirID(pathCopy, currentDirectoryID);
+
+            if (parentID == -1)
+            {
+                printf("Invalid path. Could not find parent directory.\n");
+                return;
+            }
+        }
+
+        if (myDelete(filename, parentID) == -1)
         {
             printf("Error when deleting file (does not exist or bad match), case sensitive\n");
             return;
         }
+
         printf("Successfully deleted file: %s\n", args[2]);
     }
     else if (strcmp(args[0], "rename") == 0 && strcmp(args[1], "file") == 0)
@@ -133,19 +209,58 @@ void executeCommand(char **args, int argc)
         }
         printf("Successfully renamed file from %s to %s\n", args[2], args[3]);
     }
+
     else if (strcmp(args[0], "read") == 0 && strcmp(args[1], "file") == 0)
     {
         if (argc < 3)
         {
-            printf("Usage: read file <name>\n");
+            printf("Usage: read file <path>\n");
             return;
         }
-        File *tmp = myOpen(args[2], currentDirectoryID);
+
+        // Extract directory path and filename
+        char *path = strdup(args[2]);
+        char *filename = strrchr(path, '/');
+
+        short parentDirID;
+        if (filename == NULL)
+        {
+            // No path specified, use current directory
+            filename = path;
+            parentDirID = currentDirectoryID;
+        }
+        else
+        {
+            // Split path and filename
+            *filename = '\0'; // Terminate the path portion
+            filename++;       // Move to filename
+
+            if (strlen(path) == 0)
+            {
+                // Path was just "/", meaning root
+                parentDirID = 0;
+            }
+            else
+            {
+                parentDirID = findParentDirID(path, currentDirectoryID);
+                if (parentDirID == -1)
+                {
+                    printf("Path '%s' not found\n", path);
+                    free(path);
+                    return;
+                }
+            }
+        }
+
+        File *tmp = myOpen(filename, parentDirID);
+        free(path);
+
         if (!tmp)
         {
-            printf("Failed to open file '%s'\n", args[2]);
+            printf("Failed to open file '%s'\n", filename);
             return;
         }
+
         char *msg = (char *)malloc((1 + tmp->size) * sizeof(char));
         int totalRead = myRead(tmp, msg, tmp->size);
         if (totalRead == -1)
@@ -155,24 +270,64 @@ void executeCommand(char **args, int argc)
             printf("Error when reading file\n");
             return;
         }
+
         msg[totalRead] = '\0';
         printf("%s\n", msg);
+
         free(msg);
         myClose(tmp);
     }
     else if (strcmp(args[0], "modify") == 0 && strcmp(args[1], "file") == 0)
     {
-        if (argc < 3)
+        if (argc < 4)
         {
-            printf("Usage: modify file <name> <content>\n");
+            printf("Usage: modify file <path> <content>\n");
             return;
         }
-        File *tmp = myOpen(args[2], currentDirectoryID);
+
+        // Extract directory path and filename
+        char *path = strdup(args[2]);
+        char *filename = strrchr(path, '/');
+
+        short parentDirID;
+        if (filename == NULL)
+        {
+            // No path specified, use current directory
+            filename = path;
+            parentDirID = currentDirectoryID;
+        }
+        else
+        {
+            // Split path and filename
+            *filename = '\0'; // Terminate the path portion
+            filename++;       // Move to filename
+
+            if (strlen(path) == 0)
+            {
+                // Path was just "/", meaning root
+                parentDirID = 0;
+            }
+            else
+            {
+                parentDirID = findParentDirID(path, currentDirectoryID);
+                if (parentDirID == -1)
+                {
+                    printf("Path '%s' not found\n", path);
+                    free(path);
+                    return;
+                }
+            }
+        }
+
+        File *tmp = myOpen(filename, parentDirID);
+        free(path);
+
         if (!tmp)
         {
-            printf("Failed to open file '%s'\n", args[2]);
+            printf("Failed to open file '%s'\n", filename);
             return;
         }
+
         // Combine all remaining arguments as content
         char content[2049] = "";
         for (int i = 3; i < argc; i++)
@@ -181,49 +336,162 @@ void executeCommand(char **args, int argc)
             if (i < argc - 1)
                 strcat(content, " ");
         }
+
         if (myWrite(tmp, content, strlen(content)) == -1)
         {
             myClose(tmp);
             printf("Error when writing to file\n");
             return;
         }
-        printf("Successfully modified file '%s'\n", args[2]);
+
+        printf("Successfully modified file '%s'\n", filename);
         myClose(tmp);
     }
     else if (strcmp(args[0], "ls") == 0)
     {
-        handleListFolderContents();
+        handleListFolderContents(argc > 1 ? args[1] : NULL);
     }
     else if (strcmp(args[0], "mkdir") == 0)
     {
         if (argc < 2)
         {
-            printf("Usage: mkdir <name>\n");
+            printf("Usage: mkdir <path>\n");
             return;
         }
-        if (myCreateRepo(args[1], currentDirectoryID) == -1)
+
+        // Extract directory path and new folder name
+        char *path = strdup(args[1]);
+        char *dirname = strrchr(path, '/');
+
+        short parentDirID;
+        if (dirname == NULL)
         {
-            printf("Failed to create folder '%s'\n", args[1]);
+            // No path specified, use current directory
+            dirname = path;
+            parentDirID = currentDirectoryID;
         }
         else
         {
-            printf("Folder '%s' created successfully\n", args[1]);
+            // Split path and directory name
+            *dirname = '\0'; // Terminate the path portion
+            dirname++;       // Move to directory name
+
+            if (strlen(path) == 0)
+            {
+                // Path was just "/", meaning root
+                parentDirID = 0;
+            }
+            else
+            {
+                parentDirID = findParentDirID(path, currentDirectoryID);
+                if (parentDirID == -1)
+                {
+                    printf("Parent path '%s' not found\n", path);
+                    free(path);
+                    return;
+                }
+            }
         }
+
+        if (myCreateRepo(dirname, parentDirID) == -1)
+        {
+            printf("Failed to create folder '%s'\n", dirname);
+        }
+        else
+        {
+            printf("Folder '%s' created successfully in %s\n",
+                   dirname,
+                   (parentDirID == currentDirectoryID) ? "current directory" : "specified path");
+        }
+
+        free(path);
     }
     else if (strcmp(args[0], "rmdir") == 0)
     {
         if (argc < 2)
         {
-            printf("Usage: rmdir <name>\n");
+            printf("Usage: rmdir <absolute_path>\n");
             return;
         }
-        if (myDeleteDir(args[1]) == -1)
+
+        // Only accept absolute paths starting with /
+        if (args[1][0] != '/')
         {
-            printf("Failed to delete folder '%s' (might not be empty or doesn't exist)\n", args[1]);
+            printf("Error: Only absolute paths are supported (e.g., /a/b/c)\n");
+            return;
+        }
+
+        char *path = strdup(args[1]);
+        if (!path)
+        {
+            printf("Memory allocation error\n");
+            return;
+        }
+
+        // Find the last component
+        char *last_slash = strrchr(path, '/');
+        if (!last_slash || strlen(last_slash) <= 1)
+        {
+            printf("Invalid path format - must be like /a/b/c\n");
+            free(path);
+            return;
+        }
+
+        // Split into parent path and directory name
+        *last_slash = '\0';             // Terminate parent path
+        char *dirname = last_slash + 1; // Directory to delete
+
+        // Handle root parent case (/dirname)
+        short parentDirID = 0; // Start with root
+        if (strlen(path) > 0)
+        { // If path isn't just "/"
+            parentDirID = findParentDirID(path, 0);
+            if (parentDirID == -1)
+            {
+                printf("Parent path '%s' does not exist\n", path);
+                free(path);
+                return;
+            }
+        }
+
+        // Check if directory exists
+        Directory dirArray[MAX_DIR_AMOUNT];
+        if (loadDirBlock(dirArray) == -1)
+        {
+            printf("Failed to load directory information\n");
+            free(path);
+            return;
+        }
+
+        int dir_found = 0;
+        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+        {
+            if (strcmp(dirArray[i].nomDossier, dirname) == 0 &&
+                dirArray[i].parentID == parentDirID)
+            {
+                dir_found = 1;
+                break;
+            }
+        }
+
+        if (!dir_found)
+        {
+            printf("Directory '%s' not found in '%s'\n", dirname, path);
+            free(path);
+            return;
+        }
+
+        // Delete the directory
+        int result = myDeleteDir(dirname, parentDirID);
+        free(path);
+
+        if (result == -1)
+        {
+            printf("Failed to delete '%s' (directory not empty or system error)\n", dirname);
         }
         else
         {
-            printf("Folder '%s' deleted successfully\n", args[1]);
+            printf("Successfully deleted '%s'\n", dirname);
         }
     }
     else if (strcmp(args[0], "cd") == 0)
@@ -233,6 +501,7 @@ void executeCommand(char **args, int argc)
             printf("Usage: cd <path>\n");
             return;
         }
+
         Directory dirArray[MAX_DIR_AMOUNT];
         if (loadDirBlock(dirArray) == -1)
         {
@@ -240,7 +509,7 @@ void executeCommand(char **args, int argc)
             return;
         }
 
-        // Handle special cases
+        // Handle special cases first
         if (strcmp(args[1], "..") == 0)
         {
             if (currentDirectoryID == 0)
@@ -248,6 +517,7 @@ void executeCommand(char **args, int argc)
                 printf("Already at root directory\n");
                 return;
             }
+            // Find current directory to get its parent
             for (int i = 0; i < MAX_DIR_AMOUNT; i++)
             {
                 if (dirArray[i].repoID == currentDirectoryID)
@@ -257,6 +527,8 @@ void executeCommand(char **args, int argc)
                     return;
                 }
             }
+            printf("Error: Couldn't find parent directory\n");
+            return;
         }
         else if (strcmp(args[1], "/") == 0)
         {
@@ -264,20 +536,63 @@ void executeCommand(char **args, int argc)
             printf("Changed to root directory\n");
             return;
         }
-
-        // Handle subdirectory navigation
-        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+        else if (strcmp(args[1], ".") == 0)
         {
-            if (dirArray[i].parentID == currentDirectoryID &&
-                strcmp(dirArray[i].nomDossier, args[1]) == 0)
+            printf("Remaining in current directory\n");
+            return;
+        }
+
+        // Handle paths
+        char *path = strdup(args[1]);
+        char *targetName = path;
+        short parentID = currentDirectoryID; // Default to current directory for relative paths
+
+        if (path[0] == '/')
+        {
+            // Absolute path - start from root
+            parentID = 0;
+            targetName++; // Skip leading slash
+        }
+
+        // Find the target directory
+        int found = 0;
+        short targetID = -1;
+
+        // Check if we have a multi-component path
+        char *slash = strchr(targetName, '/');
+        if (slash != NULL)
+        {
+            // For paths like "a/b" or "/a/b"
+            *slash = '\0'; // Temporarily terminate at first slash
+            parentID = findParentDirID(targetName, parentID);
+            targetName = slash + 1;
+        }
+
+        if (parentID != -1)
+        {
+            // Now look for the final directory component
+            for (int i = 0; i < MAX_DIR_AMOUNT; i++)
             {
-                currentDirectoryID = dirArray[i].repoID;
-                printf("Changed to directory: %s\n", args[1]);
-                return;
+                if (dirArray[i].parentID == parentID &&
+                    strcmp(dirArray[i].nomDossier, targetName) == 0)
+                {
+                    targetID = dirArray[i].repoID;
+                    found = 1;
+                    break;
+                }
             }
         }
 
-        printf("Directory '%s' not found\n", args[1]);
+        free(path);
+
+        if (!found)
+        {
+            printf("Directory '%s' not found\n", args[1]);
+            return;
+        }
+
+        currentDirectoryID = targetID;
+        printf("Changed to directory: %s\n", targetName);
     }
     else if (strcmp(args[0], "chmod") == 0)
     {
@@ -397,7 +712,6 @@ void executeCommand(char **args, int argc)
     }
 }
 
-// Add this function before main
 void buildCurrentPath(char *path, Directory *dirArray)
 {
     if (currentDirectoryID == 0)
@@ -469,7 +783,6 @@ int main(int argc, char **argv)
     char command[MAX_COMMAND_LENGTH];
     char *args[MAX_ARGS];
     int argCount;
-    char currentPath[MAX_FILES_NAME_SIZE * 10] = ""; // Increased size for longer paths
     Directory dirArray[MAX_DIR_AMOUNT];
 
     printf("File Manager CLI (Working on: %s)\n", PARTITION_NAME);
@@ -565,44 +878,6 @@ void handleCreateFile()
 
     printf("Successfully created '%s' in %d\n", tmp->nom, currentDirectoryID);
     myClose(tmp);
-}
-
-void handleDeleteFile()
-{
-    char buf[128] = "";
-    printf("Specify which file to delete : ");
-    scanf(" %[^\n]s", buf);
-    if (strlen(buf) > MAX_FILES_NAME_SIZE)
-    {
-        printf("Filename cannot exceed %u char", MAX_FILES_NAME_SIZE);
-        return;
-    }
-    if (myDelete(buf) == -1)
-    {
-        printf("Error when deleting file (does not exist or bad match), case sensitive\n");
-        return;
-    }
-    printf("Successfully deleted file : %s", buf);
-}
-void handleRenameFile()
-{
-    char buf[128] = "";
-    char rename[65] = "";
-    printf("Specify which file to rename: \n");
-    scanf(" %[^\n]s", buf);
-    printf("Renaming to : \n");
-    scanf(" %[^\n]s", rename);
-    if (strlen(buf) > MAX_FILES_NAME_SIZE || strlen(rename) > MAX_FILES_NAME_SIZE)
-    {
-        printf("Filename cannot exceed %u char", MAX_FILES_NAME_SIZE);
-        return;
-    }
-    if (myRename(buf, rename) == -1)
-    {
-        printf("Error when renaming file (does not exist or bad match), case sensitive\n");
-        return;
-    }
-    printf("Successfully renamed file from : %s to : %s ", buf, rename);
 }
 
 void handleReadFile()
@@ -777,7 +1052,7 @@ void handleCreateFolder()
     }
 }
 
-void handleListFolderContents()
+void handleListFolderContents(const char *path)
 {
     Directory dirArray[MAX_DIR_AMOUNT];
     if (loadDirBlock(dirArray) == -1)
@@ -786,62 +1061,111 @@ void handleListFolderContents()
         return;
     }
 
-    printf("\n=== Existing Folders ===\n");
-
-    // Count the number of folders
-    int folderCount = 0;
-    for (int i = 1; i < MAX_DIR_AMOUNT; i++)
+    // Determine target directory
+    short targetDirID;
+    if (path == NULL || strcmp(path, ".") == 0)
     {
-        if (dirArray[i].parentID == currentDirectoryID && strcmp(dirArray[i].nomDossier, "") != 0)
+        targetDirID = currentDirectoryID;
+    }
+    else if (strcmp(path, "..") == 0)
+    {
+        // Handle parent directory
+        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
         {
-            // Print folder name
-            printf("📁 %s/\n", dirArray[i].nomDossier);
-            folderCount++;
+            if (dirArray[i].repoID == currentDirectoryID)
+            {
+                targetDirID = dirArray[i].parentID;
+                break;
+            }
         }
-    }
-
-    if (folderCount == 0)
-    {
-        printf("No folders found\n");
-    }
-    printf("\n=== Existing Files ===\n");
-    File fileArray[NUMBER_OF_BLOCK];
-
-    if (loadFileBlock(fileArray) == -1)
-    {
-        printf("Failed to load files information\n");
-        return;
-    }
-
-    int fileCount = 0;
-    for (int i = 0; i < MAX_ENTRIES_DIR; i++)
-    {
-        if (fileArray[i].parentIndex == currentDirectoryID && strcmp(fileArray[i].nom, "") != 0)
-        {
-            printf("📄 %s\n", fileArray[i].nom);
-            fileCount++;
-        }
-    }
-
-    if (fileCount == 0)
-    {
-        printf("No files found\n");
-    }
-}
-
-void handleDeleteFolder()
-{
-    char folderName[MAX_FILES_NAME_SIZE];
-    printf("Enter folder name to delete: ");
-    scanf(" %[^\n]", folderName);
-
-    if (myDeleteDir(folderName) == -1)
-    {
-        printf("Failed to delete folder '%s' (might not be empty or doesn't exist)\n", folderName);
     }
     else
     {
-        printf("Folder '%s' deleted successfully\n", folderName);
+        // Handle paths
+        if (path[0] == '/')
+        {
+            targetDirID = findParentDirID(path, 0);
+        }
+        else
+        {
+            targetDirID = findParentDirID(path, currentDirectoryID);
+        }
+
+        if (targetDirID == -1)
+        {
+            printf("Directory '%s' not found\n", path);
+            return;
+        }
+    }
+
+    // Find target directory
+    Directory targetDir;
+    int dirFound = 0;
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+    {
+        if (dirArray[i].repoID == targetDirID)
+        {
+            targetDir = dirArray[i];
+            dirFound = 1;
+            break;
+        }
+    }
+
+    if (!dirFound)
+    {
+        printf("Target directory not found\n");
+        return;
+    }
+
+    // Display header
+    printf("\n=== Contents of %s ===\n",
+           path ? path : (targetDirID == 0 ? "root" : "current directory"));
+
+    // List subdirectories (excluding root when in root)
+    printf("\n📁 Folders (%d):\n", targetDir.nbSubRepos);
+    if (targetDir.nbSubRepos == 0)
+    {
+        printf("(No subdirectories)\n");
+    }
+    else
+    {
+        for (int i = 0; i < MAX_DIR_AMOUNT; i++)
+        {
+            // Skip root directory (ID 0) when listing root's contents
+            if (dirArray[i].parentID == targetDirID &&
+                dirArray[i].repoID != 0 && // This excludes root from listing
+                strcmp(dirArray[i].nomDossier, "") != 0)
+            {
+                printf("• %s/\n", dirArray[i].nomDossier);
+            }
+        }
+    }
+
+    // List files (unchanged)
+    File fileArray[NUMBER_OF_BLOCK];
+    if (loadFileBlock(fileArray) == -1)
+    {
+        printf("\nFailed to load files information\n");
+        return;
+    }
+
+    printf("\n📄 Files (%d):\n", targetDir.nbFiles);
+    if (targetDir.nbFiles == 0)
+    {
+        printf("(No files)\n");
+    }
+    else
+    {
+        for (int i = 0; i < targetDir.nbFiles; i++)
+        {
+            int fileIndex = targetDir.files[i];
+            if (fileIndex >= 0 && strcmp(fileArray[fileIndex].nom, "") != 0)
+            {
+                printf("• %s (Size: %d bytes)\n",
+                       fileArray[fileIndex].nom,
+                       fileArray[fileIndex].size);
+            }
+        }
     }
 }
 
