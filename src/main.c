@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief Programme principal du gestionnaire de fichiers
- * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES ( ) & Imane ABDELBASSIR ( )
+ * @author Massin KHELOUFI (40%) & Ilyes AGHOUILES (30%) & Imane ABDELBASSIR ( )
  * @date 2025
  *
  * Ce fichier contient l'implémentation principale du gestionnaire de fichiers.
