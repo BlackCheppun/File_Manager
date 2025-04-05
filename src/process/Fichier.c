@@ -120,7 +120,6 @@ File *myOpen(char *fileName, short dirID)
     newFile->permissions = 0644;        // Permissions par défaut: rw-r--r--
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
-    dirArray[dirIndex].nbFiles++;
     saveDirBlock(dirArray);
 
     // Update filesystem metadata
@@ -472,7 +471,7 @@ void mySeek(File *f, int offset, int base)
     }
 }
 
-int myDelete(char *fileName)
+int myDelete(char *fileName, int dirID)
 {
     SuperBlock sb;
     loadSuperBlock(&sb);
@@ -484,43 +483,47 @@ int myDelete(char *fileName)
     loadDirBlock(dirArray);
 
     int nbActu = sb.totalFile - sb.nbFileDispo;
-    int i = 0;
-    // Find the file to delete
-    while (i < nbActu && strcmp(fileArray[i].nom, fileName) != 0)
+    int fileIndex = -1;
+
+    for (int i = 0; i < nbActu; i++)
     {
-        i++;
+        if (strcmp(fileArray[i].nom, fileName) == 0 && fileArray[i].parentIndex == dirID)
+        {
+            fileIndex = i;
+            break;
+        }
     }
 
-    if (i >= nbActu)
+    if (fileIndex == -1)
     {
         perror("File not found");
         return -1;
     }
 
-    // Get the directory containing the file
+    File *fileToDelete = &fileArray[fileIndex];
+
     Directory *parentDir = NULL;
     for (int j = 0; j < MAX_DIR_AMOUNT; j++)
     {
-        if (dirArray[j].repoID == fileArray[i].parentIndex)
+        if (dirArray[j].repoID == fileToDelete->parentIndex)
         {
             parentDir = &dirArray[j];
             break;
         }
     }
+
     if (!parentDir)
     {
         perror("Parent directory not found");
         return -1;
     }
 
-    // Handle symbolic links
-    if (fileArray[i].linkType == LINK_TYPE_SYMBOLIC)
-    {
-        // For symbolic links, just free the link's data blocks
-        int currentIndex = fileArray[i].posInBlockBMP;
-        int next = bbmp.bmpTab[currentIndex];
+    // === Handle Block Bitmap Release ===
+    int currentIndex = fileToDelete->posInBlockBMP;
+    int next = bbmp.bmpTab[currentIndex];
 
-        // Free the link's data blocks
+    if (fileToDelete->linkType == LINK_TYPE_SYMBOLIC)
+    {
         while (next != USHRT_MAX)
         {
             bbmp.bmpTab[currentIndex] = 0;
@@ -530,62 +533,21 @@ int myDelete(char *fileName)
         }
         bbmp.bmpTab[currentIndex] = 0;
         sb.nbBlockDispo++;
-
-        // Remove the link entry
-        for (int j = i; j < nbActu - 1; j++)
-        {
-            fileArray[j] = fileArray[j + 1];
-        }
-        fileArray[nbActu - 1].nom[0] = '\0';
-        sb.nbFileDispo++;
-
-        // Remove from directory's file list
-        for (int j = 0; j < parentDir->nbFiles; j++)
-        {
-            if (parentDir->files[j] == fileArray[i].posInBlockBMP)
-            {
-                // Shift remaining entries
-                for (int k = j; k < parentDir->nbFiles - 1; k++)
-                {
-                    parentDir->files[k] = parentDir->files[k + 1];
-                }
-                parentDir->nbFiles--;
-                break;
-            }
-        }
-
-        // Save changes
-        saveSuperBlock(sb);
-        for (int j = i; j < nbActu; j++)
-        {
-            saveFileBlock(fileArray[j], j);
-        }
-        saveBBMP(bbmp);
-        saveDirBlock(dirArray);
-        return 0;
     }
-
-    // Handle hard links
-    if (fileArray[i].linkType == LINK_TYPE_HARD)
+    else if (fileToDelete->linkType == LINK_TYPE_HARD)
     {
-        // Count remaining hard links to the target file
         int linkCount = 0;
         for (int j = 0; j < nbActu; j++)
         {
             if (fileArray[j].linkType == LINK_TYPE_HARD &&
-                fileArray[j].targetFileIndex == fileArray[i].targetFileIndex)
+                fileArray[j].targetFileIndex == fileToDelete->targetFileIndex)
             {
                 linkCount++;
             }
         }
 
-        // If this is the last hard link, free the data blocks
         if (linkCount == 1)
         {
-            int currentIndex = fileArray[i].posInBlockBMP;
-            int next = bbmp.bmpTab[currentIndex];
-
-            // Free the data blocks
             while (next != USHRT_MAX)
             {
                 bbmp.bmpTab[currentIndex] = 0;
@@ -596,87 +558,64 @@ int myDelete(char *fileName)
             bbmp.bmpTab[currentIndex] = 0;
             sb.nbBlockDispo++;
         }
-
-        // Remove the link entry
-        for (int j = i; j < nbActu - 1; j++)
-        {
-            fileArray[j] = fileArray[j + 1];
-        }
-        fileArray[nbActu - 1].nom[0] = '\0';
-        sb.nbFileDispo++;
-
-        // Remove from directory's file list
-        for (int j = 0; j < parentDir->nbFiles; j++)
-        {
-            if (parentDir->files[j] == fileArray[i].posInBlockBMP)
-            {
-                // Shift remaining entries
-                for (int k = j; k < parentDir->nbFiles - 1; k++)
-                {
-                    parentDir->files[k] = parentDir->files[k + 1];
-                }
-                parentDir->nbFiles--;
-                break;
-            }
-        }
-
-        // Save changes
-        saveSuperBlock(sb);
-        for (int j = i; j < nbActu; j++)
-        {
-            saveFileBlock(fileArray[j], j);
-        }
-        saveBBMP(bbmp);
-        saveDirBlock(dirArray);
-        return 0;
     }
-
-    // Handle regular files
-    sb.nbFileDispo++;
-    int currentIndex = fileArray[i].posInBlockBMP;
-    int next = bbmp.bmpTab[currentIndex];
-
-    // Remove the file entry
-    for (int j = i; j < nbActu - 1; j++)
+    else // Regular file
     {
-        fileArray[j] = fileArray[j + 1];
-    }
-    fileArray[nbActu - 1].nom[0] = '\0';
-
-    // Free the data blocks
-    while (next != USHRT_MAX)
-    {
+        while (next != USHRT_MAX)
+        {
+            bbmp.bmpTab[currentIndex] = 0;
+            currentIndex = next;
+            next = bbmp.bmpTab[currentIndex];
+            sb.nbBlockDispo++;
+        }
         bbmp.bmpTab[currentIndex] = 0;
-        currentIndex = next;
-        next = bbmp.bmpTab[currentIndex];
         sb.nbBlockDispo++;
     }
-    bbmp.bmpTab[currentIndex] = 0;
-    sb.nbBlockDispo++;
 
-    // Remove from directory's file list
+    // === Remove file from directory ===
     for (int j = 0; j < parentDir->nbFiles; j++)
     {
-        if (parentDir->files[j] == fileArray[i].posInBlockBMP)
+        if (strcmp(fileArray[parentDir->files[j]].nom, fileToDelete->nom) == 0)
         {
-            // Shift remaining entries
+            // Shift left
             for (int k = j; k < parentDir->nbFiles - 1; k++)
             {
                 parentDir->files[k] = parentDir->files[k + 1];
+                strcpy(fileArray[parentDir->files[k]].nom, fileArray[parentDir->files[k + 1]].nom);
             }
             parentDir->nbFiles--;
             break;
         }
     }
 
-    // Save changes
+    // === Remove file from fileArray ===
+    for (int j = fileIndex; j < nbActu - 1; j++)
+    {
+        fileArray[j] = fileArray[j + 1];
+    }
+
+    // Clear last file slot
+    memset(&fileArray[nbActu - 1], 0, sizeof(File));
+    sb.nbFileDispo++;
+
+    // === Save everything ===
     saveSuperBlock(sb);
-    for (int j = i; j < nbActu; j++)
+    for (int j = 0; j < nbActu - 1; j++)
     {
         saveFileBlock(fileArray[j], j);
     }
     saveBBMP(bbmp);
+
+    for (int j = 0; j < MAX_DIR_AMOUNT; j++)
+    {
+        if (dirArray[j].repoID == parentDir->repoID)
+        {
+            dirArray[j] = *parentDir; // Explicitly update
+            break;
+        }
+    }
     saveDirBlock(dirArray);
+
     return 0;
 }
 
@@ -826,14 +765,9 @@ int myCreateRepo(const char *repoName, unsigned short parentID)
     return 0;
 }
 
-/**
- * Deletes a directory if it's empty
- * @param dirName Name of directory to delete
- * @return 0 on success, -1 on failure
- */
-int myDeleteDir(const char *dirName)
+int myDeleteDir(const char *dirname, short parentID)
 {
-    // Load necessary metadata
+    // Load directory information
     Directory dirArray[MAX_DIR_AMOUNT];
     if (loadDirBlock(dirArray) == -1)
     {
@@ -841,56 +775,57 @@ int myDeleteDir(const char *dirName)
         return -1;
     }
 
-    SuperBlock sb;
-    loadSuperBlock(&sb);
-
-    // Find the directory
-    int dirIndex = -1;
+    // Find the target directory
+    int targetIndex = -1;
     for (int i = 0; i < MAX_DIR_AMOUNT; i++)
     {
-        if (strcmp(dirArray[i].nomDossier, dirName) == 0)
+        if (strcmp(dirArray[i].nomDossier, dirname) == 0 &&
+            dirArray[i].parentID == parentID)
         {
-            dirIndex = i;
+            targetIndex = i;
             break;
         }
     }
 
-    if (dirIndex == -1)
+    if (targetIndex == -1)
     {
-        printf("Directory '%s' not found\n", dirName);
+        printf("Directory '%s' not found in parent directory ID %d\n", dirname, parentID);
         return -1;
     }
+
+    Directory *targetDir = &dirArray[targetIndex];
 
     // Check if directory is empty
-    if (dirArray[dirIndex].nbFiles > 0)
+    if (targetDir->nbFiles > 0 || targetDir->nbSubRepos > 0)
     {
-        printf("Directory not empty! Remove contents first.\n");
+        printf("Directory '%s' is not empty! (%d files, %d subdirectories)\n",
+               dirname, targetDir->nbFiles, targetDir->nbSubRepos);
         return -1;
     }
 
-    // For root directory (special case)
-    if (dirArray[dirIndex].repoID == 0)
+    // Special case: Can't delete root directory
+    if (targetDir->repoID == 0)
     {
         printf("Cannot delete root directory!\n");
         return -1;
     }
 
-    // Remove from parent's directory entries (if not root)
-    if (dirArray[dirIndex].parentID != 0)
+    // Remove from parent's subRepos list (if not root)
+    if (parentID != 0)
     {
         for (int i = 0; i < MAX_DIR_AMOUNT; i++)
         {
-            if (dirArray[i].repoID == dirArray[dirIndex].parentID)
+            if (dirArray[i].repoID == parentID)
             {
-                // Find and remove from parent's entries
-                for (int j = 0; j < dirArray[i].nbFiles; j++)
+                // Find and remove from parent's subRepos
+                for (int j = 0; j < dirArray[i].nbSubRepos; j++)
                 {
-                    if (dirArray[i].subRepos[j] == dirArray[dirIndex].repoID)
+                    if (dirArray[i].subRepos[j] == targetDir->repoID)
                     {
                         // Shift remaining entries
-                        for (int k = j; k < dirArray[i].nbFiles - 1; k++)
+                        for (int k = j; k < dirArray[i].nbSubRepos - 1; k++)
                         {
-                            dirArray[i].files[k] = dirArray[i].files[k + 1];
+                            dirArray[i].subRepos[k] = dirArray[i].subRepos[k + 1];
                         }
                         dirArray[i].nbSubRepos--;
                         break;
@@ -902,22 +837,24 @@ int myDeleteDir(const char *dirName)
     }
 
     // Clear the directory entry
-    memset(&dirArray[dirIndex], 0, sizeof(Directory));
+    memset(targetDir, 0, sizeof(Directory));
 
-    // Update SuperBlock
+    // Update superblock
+    SuperBlock sb;
+    loadSuperBlock(&sb);
     sb.nbDirectoryDispo++;
     saveSuperBlock(sb);
 
-    // Save changes to disk
+    // Save directory changes
     if (saveDirBlock(dirArray) == -1)
     {
-        perror("Failed to save directory changes");
+        perror("Failed to save directory block");
         return -1;
     }
 
+    printf("Directory '%s' deleted successfully\n", dirname);
     return 0;
 }
-
 /**
  * Closes a file and updates filesystem metadata
  * @param file Pointer to the file to close

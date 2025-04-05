@@ -88,9 +88,10 @@ int myRename(char *oldName, char *newName);
  * <br/>
  * <strong>Attention il ne supprime pas de manière sécurisé (vos données sont encores présentes dans la partition)</strong>
  * @param fileName nom du fichier à supprimer
+ * @param dirID ID du répertoire parent
  * @return int 0 eb cas de réussite | -1 échec
  */
-int myDelete(char *fileName);
+int myDelete(char *fileName, int dirID);
 
 /**
  * @brief génère un ID unique pour le répertoire
@@ -157,7 +158,7 @@ char *myReadLink(char *linkName, short dirID);
 /**
  * @brief fun to delete dir
  */
-int myDeleteDir(const char *dirName);
+int myDeleteDir(const char *dirName, short curIdex);
 
 /**
  * @brief Change les permissions d'un fichier
