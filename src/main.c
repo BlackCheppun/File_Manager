@@ -159,7 +159,7 @@
          printf("  read file <name> - Read file contents\n");
          printf("  modify file <name> <content> - Modify file contents\n");
          printf("  ls - List directory contents\n");
-         printf("  pwd - Show current path\n");
+         printf("  getcwd - Show current path\n");
          printf("  mkdir <name> - Create a new directory\n");
          printf("  rmdir <name> - Delete a directory\n");
          printf("  cd <path> - Change directory\n");
@@ -173,7 +173,7 @@
          printf("  restore <backup_name> - Restore from backup\n");
          printf("  exit - Exit the program\n");
      }
-     else if (strcmp(args[0], "pwd") == 0)
+     else if (strcmp(args[0], "getcwd") == 0)
      {
          printf("Current path: %s\n", currentPath);
      }
