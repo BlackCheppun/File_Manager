@@ -23,9 +23,10 @@ File *myOpen(char *fileName, short dirID)
 
     // Load necessary metadata
     SuperBlock sb;
+// At the start of myOpen():
     loadSuperBlock(&sb);
     File fileArray[NUMBER_OF_BLOCK];
-    loadFileBlock(fileArray);
+    loadFileBlock(fileArray);  // This should get fresh data including permissions
     Directory dirArray[MAX_DIR_AMOUNT];
     loadDirBlock(dirArray);
 
@@ -141,6 +142,12 @@ File *myOpen(char *fileName, short dirID)
 
 int myWrite(File *f, void *buffer, int nBytes)
 {
+    printf("DEBUG: Attempting write to file %s with permissions %o\n", f->nom, f->permissions);
+    if ((f->permissions & 0200) == 0) {
+        perror("Write permission denied");
+        return -1;
+    }
+
     SuperBlock sb;
     loadSuperBlock(&sb);
     BlockBitmap bbmp;
@@ -274,6 +281,12 @@ int myWrite(File *f, void *buffer, int nBytes)
 
 int myRead(File *f, void *buffer, int nBytes)
 {
+    // Check read permissions
+    if ((f->permissions & 0400) == 0) { // Check if read bit is set for owner
+        perror("Read permission denied");
+        return -1;
+    }
+
     if (nBytes < 0)
     {
         perror("Cannot read negative value");
@@ -327,6 +340,12 @@ int myRead(File *f, void *buffer, int nBytes)
         if (!target)
         {
             perror("Target file not found for hard link");
+            return -1;
+        }
+
+        // Check target file read permissions
+        if ((target->permissions & 0400) == 0) {
+            perror("Read permission denied for target file");
             return -1;
         }
 
@@ -415,7 +434,6 @@ int myRead(File *f, void *buffer, int nBytes)
     f->posSeek += offset;
     return offset;
 }
-
 void mySeek(File *f, int offset, int base)
 {
     int currentPos = (int)f->posSeek;
@@ -936,15 +954,13 @@ int myChmod(char *fileName, unsigned short permissions, short dirID)
         return -1;
     }
 
-    // Mettre à jour les permissions
+    printf("DEBUG: Changing permissions of %s to %o\n", fileName, permissions);
     fileArray[fileIndex].permissions = permissions;
-
-    // Sauvegarder les modifications
-    if (saveFileBlock(fileArray[fileIndex], fileIndex) == -1)
-    {
+    if (saveFileBlock(fileArray[fileIndex], fileIndex) == -1) {
         printf("Failed to save file permissions\n");
-        return -1;
+    return -1;
     }
+    printf("DEBUG: Permissions successfully updated on disk\n");
 
     return 0;
 }
@@ -995,3 +1011,4 @@ int findParentDirID(const char *path, short curIdex)
     free(pathCopy);
     return parentID;
 }
+
