@@ -94,7 +94,7 @@ int myCreateSymbolicLink(char *linkName, char *targetPath, short dirID) {
     newLink.parentIndex = dirID;
     newLink.linkType = LINK_TYPE_SYMBOLIC;
     strncpy(newLink.targetPath, targetPath, MAX_FILES_NAME_SIZE);
-
+    newLink.permissions = 0777; // Default permissions for new files
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = freeIndex;
     saveDirBlock(dirArray);
@@ -184,7 +184,7 @@ int myCreateHardLink(char *linkName, char *targetFile, short dirID) {
     newLink.parentIndex = dirID;
     newLink.linkType = LINK_TYPE_HARD;
     newLink.targetFileIndex = target->posInBlockBMP; // Store target's block index
-
+    newLink.permissions = target->permissions;  //  (copies original permissions)
     // Update directory
     dirArray[dirIndex].files[dirArray[dirIndex].nbFiles++] = target->posInBlockBMP;
     saveDirBlock(dirArray);

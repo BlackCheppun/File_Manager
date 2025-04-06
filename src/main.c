@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <limits.h>
+#include <ctype.h> // For isprint()
 #include "../include/process/Fichier.h"
 #include "../include/process/Partition.h"
 #include "../include/data/TypeSuperBloc.h"
@@ -41,9 +42,21 @@ void handleChmod();
 void handleBackupPartition();
 void handleRestorePartition(char *backup_name);
 
+//function for informations about a file
+void handleFileStat(const char *filename);
+
+
 #define MAX_COMMAND_LENGTH 256
 #define MAX_ARGS 10
 
+
+void sanitize_string(char *str, int max_len) {
+    for(int i =  0; i < max_len && str[i] != '\0'; i++) {
+        if(!isprint(str[i])) {
+            str[i] = '?';
+        }
+    }
+}
 void parseCommand(char *command, char **args, int *argc)
 {
     char *token = strtok(command, " \n");
@@ -71,6 +84,7 @@ void executeCommand(char **args, int argc)
         printf("  read file <n> - Read file contents\n");
         printf("  modify file <n> - Modify file contents\n");
         printf("  ls - List directory contents\n");
+        printf("  stat <file> - Show file metadata (like ls -l)\n"); 
         printf("  mkdir <n> - Create a new directory\n");
         printf("  rmdir <n> - Delete a directory\n");
         printf("  cd <path> - Change directory\n");
@@ -350,6 +364,13 @@ void executeCommand(char **args, int argc)
     else if (strcmp(args[0], "ls") == 0)
     {
         handleListFolderContents(argc > 1 ? args[1] : NULL);
+    }
+    else if (strcmp(args[0], "stat") == 0) {
+        if (argc < 2) {
+            printf("Usage: stat <filename>\n");
+            return;
+        }
+        handleFileStat(args[1]);
     }
     else if (strcmp(args[0], "mkdir") == 0)
     {
@@ -775,6 +796,7 @@ void buildCurrentPath(char *path, Directory *dirArray)
     // Build path from root to current
     char tempPath[MAX_FILES_NAME_SIZE * 10] = ""; // Increased size for longer paths
     strcpy(tempPath, currentDir->nomDossier);
+    sanitize_string(tempPath, MAX_FILES_NAME_SIZE * 10);
 
     // Add parent directories
     short parentID = currentDir->parentID;
@@ -1453,4 +1475,108 @@ void handleRestorePartition(char *backup_name)
 
     // Force refresh of command prompt by returning immediately
     return;
+}
+    // Function to convert permissions to string
+char* getPermString(unsigned short perm) {
+        static char p[11];
+    p[0] = (perm & 0400) ? 'r' : '-';
+    p[1] = (perm & 0200) ? 'w' : '-';
+    p[2] = (perm & 0100) ? 'x' : '-';
+    p[3] = (perm & 0040) ? 'r' : '-';
+    p[4] = (perm & 0020) ? 'w' : '-';
+    p[5] = (perm & 0010) ? 'x' : '-';
+    p[6] = (perm & 0004) ? 'r' : '-';
+    p[7] = (perm & 0002) ? 'w' : '-';
+    p[8] = (perm & 0001) ? 'x' : '-';
+    p[9] = '\0';
+    return p;
+};
+
+void handleFileStat(const char *filename) {
+    // Load necessary metadata
+    SuperBlock sb;
+    loadSuperBlock(&sb);
+    File fileArray[NUMBER_OF_BLOCK];
+    loadFileBlock(fileArray);
+    Directory dirArray[MAX_DIR_AMOUNT];
+    loadDirBlock(dirArray);
+
+    // Find the file in current directory
+    int nbActualFiles = sb.totalFile - sb.nbFileDispo;
+    File *file = NULL;
+    for (int i = 0; i < nbActualFiles; i++) {
+        if (strcmp(fileArray[i].nom, filename) == 0 && 
+            fileArray[i].parentIndex == currentDirectoryID) {
+            file = &fileArray[i];
+            break;
+        }
+    }
+
+    if (!file) {
+        printf("File '%s' not found in current directory\n", filename);
+        return;
+    }
+
+    // Get parent directory name
+    char parentName[MAX_FILES_NAME_SIZE] = "unknown";
+    for (int i = 0; i < MAX_DIR_AMOUNT; i++) {
+        if (dirArray[i].repoID == file->parentIndex) {
+            strncpy(parentName, dirArray[i].nomDossier, MAX_FILES_NAME_SIZE);
+            sanitize_string(parentName, MAX_FILES_NAME_SIZE);
+            break;
+        }
+    }
+
+
+    char sanitizedName[MAX_FILES_NAME_SIZE];
+    strncpy(sanitizedName, file->nom, MAX_FILES_NAME_SIZE);
+    sanitize_string(sanitizedName, MAX_FILES_NAME_SIZE);
+
+    // Handle different file types
+    if (file->linkType == LINK_TYPE_SYMBOLIC) {
+        char sanitizedTarget[MAX_FILES_NAME_SIZE];
+        strncpy(sanitizedTarget, file->targetPath, MAX_FILES_NAME_SIZE);
+        sanitize_string(sanitizedTarget, MAX_FILES_NAME_SIZE);
+        
+        printf("\nFile: %s\n", sanitizedName);
+        printf("Type: Symbolic link\n");
+        printf("Permissions: lrwxrwxrwx\n");
+        printf("Size: %u bytes\n", file->size);
+        printf("Parent directory: %s (ID: %d)\n", parentName, file->parentIndex);
+        printf("Block position: %d\n", file->posInBlockBMP);
+        printf("Link target: %s\n", sanitizedTarget);
+    } 
+    else if (file->linkType == LINK_TYPE_HARD) {
+        // For hardlinks, find the original file to show correct permissions
+        File *originalFile = NULL;
+        for (int i = 0; i < nbActualFiles; i++) {
+            if (fileArray[i].posInBlockBMP == file->targetFileIndex) {
+                originalFile = &fileArray[i];
+                break;
+            }
+        }
+        
+        printf("\nFile: %s\n", sanitizedName);
+        printf("Type: Hard link\n");
+        
+        if (originalFile) {
+            printf("Permissions: %s (same as original file)\n", getPermString(originalFile->permissions));
+        } else {
+            printf("Permissions: (could not determine - original file not found)\n");
+        }
+        
+        printf("Size: %u bytes\n", file->size);
+        printf("Parent directory: %s (ID: %d)\n", parentName, file->parentIndex);
+        printf("Block position: %d\n", file->posInBlockBMP);
+        printf("Hard link to: block %d\n", file->targetFileIndex);
+    } 
+    else {
+        // Regular file
+        printf("\nFile: %s\n", sanitizedName);
+        printf("Type: Regular file\n");
+        printf("Permissions: %s\n", getPermString(file->permissions));
+        printf("Size: %u bytes\n", file->size);
+        printf("Parent directory: %s (ID: %d)\n", parentName, file->parentIndex);
+        printf("Block position: %d\n", file->posInBlockBMP);
+    }
 }
